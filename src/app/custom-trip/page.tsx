@@ -1,0 +1,4 @@
+import Link from "next/link";
+import { Sparkles } from "lucide-react";
+import { PlatformFrame } from "@/components/platform/Catalog";
+export default function CustomTripPage(){return <PlatformFrame title="组合服务询价" subtitle="多人、复杂需求与特殊场景" back="/"><section className="px-5 py-6"><div className="rounded-[24px] bg-[#0d315d] p-6 text-white"><Sparkles size={24}/><h1 className="mt-4 text-[25px] font-semibold">一次说清整段旅行需求</h1><p className="mt-2 text-[12px] leading-5 text-white/70">提交出发地、目的地、时间、人数和预算，顾问会按酒店、交通、门票与用车拆分需求并人工确认方案。</p></div><div className="mt-6 space-y-3 rounded-[20px] bg-white p-5">{["家庭 / 亲子旅行","情侣与蜜月","企业团建","多人出境","毕业旅行"].map(x=><Link key={x} href={`/inquiry?service=combo&subject=${encodeURIComponent(x)}`} className="flex min-h-12 items-center justify-between border-b border-[#edf2f7] text-[13px] last:border-0">{x}<span className="text-[var(--app-blue)]">获取组合方案 →</span></Link>)}</div></section></PlatformFrame>}

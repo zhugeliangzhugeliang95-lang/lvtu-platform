@@ -1,0 +1,5 @@
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
+import { CatalogHero, PlatformFrame } from "@/components/platform/Catalog";
+import { guides } from "@/data/mock/platform";
+export default function GuidesPage(){return <PlatformFrame title="旅行灵感" subtitle="攻略与真实决策建议" active="discover"><CatalogHero eyebrow="TRAVEL NOTES" title="出发前，先看看别人的路线" note="平台整理的目的地攻略，标注内容来源与适用场景。"/><section className="mt-6 space-y-4 px-5">{guides.map(g=><Link key={g.slug} href={`/guides/${g.slug}`} className="app-card app-press flex gap-3 overflow-hidden p-3"><img src={g.image} alt={g.title} className="h-[116px] w-[132px] shrink-0 rounded-[17px] object-cover"/><div className="min-w-0 flex-1"><span className="text-[10px] font-semibold text-[var(--app-blue)]">{g.tag}</span><h2 className="mt-1 line-clamp-2 text-[15px] font-semibold leading-5">{g.title}</h2><p className="mt-2 line-clamp-2 text-[11px] leading-4 text-[var(--app-muted)]">{g.summary}</p><span className="mt-2 inline-flex items-center gap-1 text-[10px] font-semibold text-[var(--app-blue)]">阅读全文 <ArrowRight size={13}/></span></div></Link>)}</section></PlatformFrame>}

@@ -3,15 +3,30 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "next dev --webpack",
+    "dev:local": "next dev --webpack -H 127.0.0.1 -p 3100",
+    "build": "next build --webpack",
     "start": "next start",
-    "lint": "eslint"
+    "check:env": "node scripts/check-production-env.mjs",
+    "start:prod": "npm run check:env && next start",
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "suppliers:import": "node scripts/import-suppliers.mjs",
+    "suppliers:csv": "node scripts/export-supplier-csv.mjs",
+    "tours:launch": "node scripts/import-launch-tours.mjs"
   },
   "dependencies": {
+    "@prisma/client": "6.19.3",
+    "framer-motion": "^12.38.0",
+    "lucide-react": "^1.14.0",
     "next": "16.2.2",
+    "openai": "^6.37.0",
+    "prisma": "6.19.3",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "sharp": "^0.35.3",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -21,6 +36,12 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.2",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.10"
+  },
+  "optionalDependencies": {
+    "@tailwindcss/oxide-darwin-arm64": "^4.2.2",
+    "lightningcss": "^1.32.0",
+    "lightningcss-darwin-arm64": "^1.32.0"
   }
 }

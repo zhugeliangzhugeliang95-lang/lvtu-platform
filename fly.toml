@@ -1,0 +1,40 @@
+app = "lvtu"
+primary_region = "sin"
+
+[build]
+
+[env]
+  PORT = "3000"
+  NODE_ENV = "production"
+  DATABASE_URL = "file:/var/data/app.db"
+  UPLOAD_DIR = "/var/data/uploads"
+  API_BASE = "https://lvyulvtu.com"
+  APP_ORIGIN = "https://lvyulvtu.com,https://www.lvyulvtu.com,https://lvtu.fly.dev"
+  NEXT_PUBLIC_SITE_URL = "https://lvyulvtu.com"
+
+[processes]
+  app = "sh -c 'node scripts/check-production-env.mjs && npx prisma migrate deploy && node node_modules/next/dist/bin/next start -p ${PORT:-3000}'"
+
+[http_service]
+  internal_port = 3000
+  processes = ["app"]
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [http_service.concurrency]
+    type = "connections"
+    hard_limit = 25
+    soft_limit = 20
+
+[[mounts]]
+  source = "lvyou_data"
+  destination = "/var/data"
+  processes = ["app"]
+
+[[vm]]
+  processes = ["app"]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1

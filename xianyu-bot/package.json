@@ -1,0 +1,13 @@
+{
+  "name": "xianyu-bot",
+  "version": "1.0.0",
+  "description": "旅游通闲鱼自动询价机器人",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "login": "node index.js --login"
+  },
+  "dependencies": {
+    "playwright": "1.48.0"
+  }
+}

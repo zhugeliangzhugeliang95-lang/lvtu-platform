@@ -36,6 +36,16 @@ yarn-error.log*
 # vercel
 .vercel
 
+# local data and browser state
+/prisma/*.db
+/backups/
+/uploads/
+/output/
+/.playwright-cli/
+/xianyu-bot/.env
+/xianyu-bot/cookies.json
+/xianyu-bot/node_modules/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

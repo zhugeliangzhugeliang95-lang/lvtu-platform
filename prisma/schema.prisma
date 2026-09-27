@@ -1,0 +1,1784 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum LeadStatus {
+  NEW
+  PENDING_CONTACT
+  CONTACTED
+  PLANNING
+  QUOTED
+  CONVERTED
+  LOST
+  CLOSED
+}
+
+// 酒店线索状态机（P1 旅游通酒店 CRM 专用，与多业务 LeadStatus 解耦）
+enum HotelLeadStatus {
+  NEW
+  ADDED
+  CONTACTED
+  QUOTED
+  DEAL
+  LOST
+  INVALID
+}
+
+// 询价类型：INTENT 轻量出行意向（首屏）、HOTEL 详细酒店询价（板块内）
+enum InquiryType {
+  INTENT
+  HOTEL
+}
+
+enum ContactType {
+  WECHAT
+  MOBILE
+}
+
+enum RequirementType {
+  HOTEL
+  FLIGHT
+  TRAIN
+  ROUTE
+  CUSTOM
+}
+
+enum ProductStatus {
+  DRAFT
+  ONLINE
+  OFFLINE
+}
+
+enum FeedbackStatus {
+  UNPROCESSED
+  PROCESSING
+  REPLIED
+  CLOSED
+}
+
+enum FeedbackType {
+  SUGGESTION
+  COMPLAINT
+  REVIEW
+}
+
+enum FavoriteProductType {
+  HOTEL
+  FLIGHT
+  TRAIN
+  ROUTE
+}
+
+enum AdminRole {
+  SUPER_ADMIN
+  OPS
+  SUPPORT
+  CONTENT
+  ORDER
+}
+
+enum OrderStatus {
+  PENDING_CONFIRM
+  PENDING_PAYMENT
+  PAID
+  PROCESSING
+  FULFILLING
+  BOOKED
+  COMPLETED
+  CANCELLED
+  AFTERSALE
+  REFUNDED
+}
+
+enum PaymentStatus {
+  UNPAID
+  PAID
+  REFUNDED
+}
+
+enum TourDepartureStatus {
+  OPEN
+  ALMOST_FULL
+  SOLD_OUT
+  CLOSED
+  PENDING_CONFIRMATION
+}
+
+enum PurchaseMode {
+  DIRECT
+  REQUEST_QUOTE
+  CONSULT
+}
+
+// 统一平台需求与报价状态（保留旧 Lead / InquiryOrder 兼容）
+enum PlatformRequirementType {
+  HOTEL
+  FLIGHT
+  TRAIN
+  ACTIVITY
+  CUSTOM_TRIP
+  CAR
+  PACKAGE
+  LOUNGE
+  OTHER
+}
+
+enum PlatformRequirementStatus {
+  SUBMITTED
+  IN_REVIEW
+  INQUIRING
+  WAITING_FINAL_QUOTE
+  FINAL_QUOTED
+  USER_CONFIRMED
+  WAITING_PAYMENT
+  PAID
+  FULFILLING
+  BOOKED
+  COMPLETED
+  CANCELLED
+}
+
+enum QuoteStatus {
+  DRAFT
+  SENT
+  VIEWED
+  ACCEPTED
+  EXPIRED
+  REJECTED
+}
+
+enum PriceStatus {
+  REFERENCE
+  ESTIMATED
+  PENDING_CONFIRMATION
+  CONFIRMED
+  EXPIRED
+  UNAVAILABLE
+}
+
+enum EstimateConfidence {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum PaymentMethod {
+  WECHAT
+  ALIPAY
+  BANK_TRANSFER
+}
+
+enum PlatformPaymentStatus {
+  PENDING
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+enum TripStatus {
+  UPCOMING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum SupportTicketStatus {
+  SUBMITTED
+  PROCESSING
+  WAITING_USER
+  WAITING_SUPPLIER
+  RESOLVED
+  CLOSED
+}
+
+enum MembershipStatus {
+  PENDING
+  ACTIVE
+  EXPIRED
+  SUSPENDED
+}
+
+enum MembershipPaymentStatus {
+  PENDING
+  USER_MARKED_PAID
+  CONFIRMED
+  REJECTED
+  CANCELLED
+}
+
+model TourProduct {
+  id            String             @id @default(cuid())
+  slug          String             @unique
+  name          String
+  destination   String
+  departureCity String?
+  days          Int
+  tourType      String
+  audience      String?
+  summary       String?
+  coverImage    String?
+  tags          String?
+  purchaseMode  PurchaseMode       @default(REQUEST_QUOTE)
+  status        ProductStatus      @default(DRAFT)
+  recommended   Boolean            @default(false)
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  departures    TourDeparture[]
+  itinerary     TourItineraryDay[]
+
+  @@index([status, destination])
+}
+
+model TourDeparture {
+  id             String              @id @default(cuid())
+  productId      String
+  product        TourProduct         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  departureDate  DateTime
+  adultPrice     Int
+  childPrice     Int?
+  singleRoomDiff Int?
+  capacity       Int?
+  booked         Int                 @default(0)
+  status         TourDepartureStatus @default(PENDING_CONFIRMATION)
+  cutoffAt       DateTime?
+  note           String?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  @@index([productId, departureDate])
+}
+
+model TourItineraryDay {
+  id          String      @id @default(cuid())
+  productId   String
+  product     TourProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+  day         Int
+  title       String
+  city        String?
+  attractions String?
+  transport   String?
+  meals       String?
+  hotel       String?
+  detail      String?
+
+  @@unique([productId, day])
+}
+
+model ActivityProduct {
+  id           String        @id @default(cuid())
+  slug         String        @unique
+  name         String
+  location     String?
+  category     String?
+  coverImage   String?
+  summary      String?
+  price        Int?
+  priceState   String        @default("PENDING_CONFIRMATION")
+  purchaseMode PurchaseMode  @default(REQUEST_QUOTE)
+  status       ProductStatus @default(DRAFT)
+  supplierId   String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@index([status, category])
+}
+
+model PackageProduct {
+  id           String        @id @default(cuid())
+  slug         String        @unique
+  name         String
+  hotelName    String?
+  coverImage   String?
+  benefits     String?
+  price        Int?
+  priceState   String        @default("PENDING_CONFIRMATION")
+  purchaseMode PurchaseMode  @default(REQUEST_QUOTE)
+  status       ProductStatus @default(DRAFT)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model Lead {
+  id              String          @id @default(cuid())
+  userId          String?
+  user            User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  type            RequirementType @default(CUSTOM)
+  name            String
+  phone           String
+  wechat          String?
+  fromCity        String
+  toCity          String
+  departDate      DateTime
+  returnDate      DateTime?
+  peopleCount     Int
+  budgetMin       Int?
+  budgetMax       Int?
+  hotelNeeds      String?
+  transportNeeds  String?
+  requestTypes    String
+  notes           String?
+  sourceChannel   String          @default("官网")
+  school          String?
+  status          LeadStatus      @default(NEW)
+  owner           String?
+  assignedStaffId String?
+  assignedStaff   AdminUser?      @relation(fields: [assignedStaffId], references: [id], onDelete: SetNull)
+  lastFollowUpAt  DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  orders Order[]
+
+  @@index([status, createdAt])
+  @@index([type, createdAt])
+  @@index([phone])
+  @@index([userId])
+  @@index([assignedStaffId])
+}
+
+model User {
+  id                     String    @id @default(cuid())
+  email                  String    @unique
+  mobile                 String?   @unique
+  nickname               String?
+  avatar                 String?
+  status                 String    @default("ACTIVE")
+  lastLoginAt            DateTime?
+  passwordHash           String
+  serviceNotifications   Boolean   @default(true)
+  marketingNotifications Boolean   @default(false)
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  leads              Lead[]
+  orders             Order[]
+  feedbacks          Feedback[]
+  favorites          Favorite[]
+  notifications      Notification[]
+  inquiryOrders      InquiryOrder[]
+  priceSearchRecords PriceSearchRecord[]
+  requirements       Requirement[]
+  trips              Trip[]
+  supportTickets     SupportTicket[]
+  travelers          Traveler[]
+  memberships        Membership[]
+  membershipPayments MembershipPayment[]
+}
+
+model Membership {
+  id        String              @id @default(cuid())
+  userId    String
+  user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  memberNo  String              @unique
+  name      String
+  phone     String
+  status    MembershipStatus    @default(PENDING)
+  startedAt DateTime?
+  expiresAt DateTime?
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+  payments  MembershipPayment[]
+
+  @@index([userId, status, expiresAt])
+  @@index([phone])
+}
+
+model MembershipPayment {
+  id             String                  @id @default(cuid())
+  paymentNo      String                  @unique
+  userId         String
+  user           User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  membershipId   String?
+  membership     Membership?             @relation(fields: [membershipId], references: [id], onDelete: SetNull)
+  amount         Int
+  method         PaymentMethod           @default(WECHAT)
+  status         MembershipPaymentStatus @default(PENDING)
+  remark         String?
+  createdAt      DateTime                @default(now())
+  confirmedAt    DateTime?
+  confirmedBy    String?
+  confirmedAdmin AdminUser?              @relation("MembershipPaymentConfirmer", fields: [confirmedBy], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+}
+
+model Traveler {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name           String
+  mobile         String?
+  documentType   String?
+  documentNumber String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([userId, createdAt])
+}
+
+model Requirement {
+  id                   String                    @id @default(cuid())
+  requirementNo        String?                   @unique
+  userId               String
+  user                 User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type                 PlatformRequirementType
+  productId            String?
+  productName          String?
+  destination          String?
+  startDate            DateTime?
+  endDate              DateTime?
+  partySize            Int?
+  contactName          String?
+  contactPhone         String?
+  wechat               String?
+  content              String
+  detailsJson          String?
+  marketReferencePrice Int?
+  estimatedMinPrice    Int?
+  estimatedMaxPrice    Int?
+  estimateConfidence   EstimateConfidence?
+  priceStatus          PriceStatus               @default(PENDING_CONFIRMATION)
+  status               PlatformRequirementStatus @default(SUBMITTED)
+  assignedStaffId      String?
+  assignedStaff        AdminUser?                @relation("RequirementAssignee", fields: [assignedStaffId], references: [id], onDelete: SetNull)
+  createdAt            DateTime                  @default(now())
+  updatedAt            DateTime                  @updatedAt
+  quotes               Quote[]
+  orders               Order[]
+  estimateResults      EstimateResult[]
+  supplierResults      SupplierInquiryResult[]
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@index([assignedStaffId, status])
+}
+
+model Quote {
+  id                 String      @id @default(cuid())
+  requirementId      String
+  requirement        Requirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  price              Int
+  currency           String      @default("CNY")
+  title              String?
+  description        String
+  included           String?
+  roomType           String?
+  cancellationPolicy String?
+  expireAt           DateTime?
+  status             QuoteStatus @default(DRAFT)
+  createdById        String?
+  createdBy          AdminUser?  @relation("QuoteCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+
+  @@index([requirementId, createdAt])
+  @@index([status, createdAt])
+}
+
+model AdminUser {
+  id           String    @id @default(cuid())
+  username     String    @unique
+  passwordHash String
+  role         AdminRole @default(OPS)
+  realName     String?
+  mobile       String?
+  status       String    @default("ACTIVE")
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  assignedLeads    Lead[]
+  handledFeedbacks Feedback[] @relation("HandledFeedbacks")
+  serviceOrders    Order[]    @relation("ServiceOrders")
+
+  // 酒店 CRM 关联
+  assignedHotelLeads  HotelLead[]          @relation("HotelLeadAssignee")
+  hotelLeadNotes      HotelLeadNote[]
+  hotelLeadStatusLogs HotelLeadStatusLog[] @relation("HotelLeadStatusOperator")
+
+  // 移动询价成单系统关联
+  assignedInquiryOrders       InquiryOrder[]      @relation("InquiryOrderAssignee")
+  assignedRequirements        Requirement[]       @relation("RequirementAssignee")
+  createdQuotes               Quote[]             @relation("QuoteCreator")
+  confirmedMembershipPayments MembershipPayment[] @relation("MembershipPaymentConfirmer")
+}
+
+model MarketPriceSnapshot {
+  id          String                  @id @default(cuid())
+  productType PlatformRequirementType
+  productId   String?
+  destination String?
+  category    String?
+  sourceName  String
+  sourceUrl   String?
+  price       Int
+  currency    String                  @default("CNY")
+  conditions  String?
+  capturedAt  DateTime                @default(now())
+  expiresAt   DateTime?
+  createdBy   String?
+  isMock      Boolean                 @default(false)
+  createdAt   DateTime                @default(now())
+
+  @@index([productType, productId, capturedAt])
+  @@index([productType, destination, capturedAt])
+  @@index([expiresAt])
+}
+
+model EstimateRule {
+  id          String                  @id @default(cuid())
+  productType PlatformRequirementType
+  destination String?
+  category    String?
+  minFactor   Float
+  maxFactor   Float
+  riskBuffer  Float                   @default(0)
+  confidence  EstimateConfidence      @default(MEDIUM)
+  active      Boolean                 @default(true)
+  validFrom   DateTime?
+  validTo     DateTime?
+  notes       String?
+  isMock      Boolean                 @default(false)
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+
+  @@index([productType, active])
+  @@index([destination, category])
+}
+
+model EstimateResult {
+  id                   String                  @id @default(cuid())
+  requirementId        String?
+  requirement          Requirement?            @relation(fields: [requirementId], references: [id], onDelete: SetNull)
+  inputHash            String                  @unique
+  productType          PlatformRequirementType
+  productId            String?
+  marketReferencePrice Int?
+  estimatedMinPrice    Int?
+  estimatedMaxPrice    Int?
+  confidence           EstimateConfidence      @default(LOW)
+  priceStatus          PriceStatus             @default(UNAVAILABLE)
+  ruleId               String?
+  explanation          String?
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+
+  @@index([requirementId, createdAt])
+  @@index([productType, productId])
+}
+
+model SupplierInquiryResult {
+  id                   String      @id @default(cuid())
+  requirementId        String
+  requirement          Requirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  supplierName         String
+  supplierId           String?
+  quotedPrice          Int
+  currency             String      @default("CNY")
+  roomType             String?
+  benefits             String?
+  cancellationPolicy   String?
+  availability         String
+  notes                String?
+  evidenceUrl          String?
+  source               String      @default("MANUAL")
+  sourceConversationId String?
+  rawResponse          String?
+  parsedByAI           Boolean     @default(false)
+  verifiedByHuman      Boolean     @default(true)
+  createdBy            String?
+  createdAt            DateTime    @default(now())
+
+  @@index([requirementId, createdAt])
+  @@index([source, createdAt])
+}
+
+model Hotel {
+  id            String        @id @default(cuid())
+  name          String
+  city          String
+  district      String?
+  address       String?
+  starLevel     Int?
+  coverImage    String?
+  galleryImages String?
+  priceStart    Int?
+  description   String?
+  facilities    String?
+  roomTypes     String?
+  cancelPolicy  String?
+  tags          String?
+  status        ProductStatus @default(ONLINE)
+  purchaseMode  PurchaseMode  @default(REQUEST_QUOTE)
+  sortOrder     Int           @default(0)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([status, sortOrder, createdAt])
+  @@index([city])
+}
+
+model FlightDeal {
+  id             String        @id @default(cuid())
+  departureCity  String
+  arrivalCity    String
+  airline        String?
+  cabinType      String?
+  priceReference Int?
+  directFlag     Boolean       @default(true)
+  description    String?
+  tags           String?
+  status         ProductStatus @default(ONLINE)
+  sortOrder      Int           @default(0)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([status, sortOrder, createdAt])
+  @@index([departureCity, arrivalCity])
+}
+
+model TrainDeal {
+  id             String        @id @default(cuid())
+  departureCity  String
+  arrivalCity    String
+  seatType       String?
+  priceReference Int?
+  description    String?
+  tags           String?
+  status         ProductStatus @default(ONLINE)
+  sortOrder      Int           @default(0)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([status, sortOrder, createdAt])
+  @@index([departureCity, arrivalCity])
+}
+
+model RoutePackage {
+  id              String        @id @default(cuid())
+  title           String
+  subtitle        String?
+  departureCity   String?
+  destinationCity String
+  days            Int?
+  nights          Int?
+  coverImage      String?
+  galleryImages   String?
+  price           Int?
+  discountPrice   Int?
+  routeType       String?
+  description     String?
+  itinerary       String?
+  includeItems    String?
+  excludeItems    String?
+  notice          String?
+  tags            String?
+  status          ProductStatus @default(ONLINE)
+  purchaseMode    PurchaseMode  @default(REQUEST_QUOTE)
+  sortOrder       Int           @default(0)
+  startTime       DateTime?
+  endTime         DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([status, sortOrder, createdAt])
+  @@index([destinationCity])
+}
+
+model Order {
+  id              String               @id @default(cuid())
+  orderNo         String               @unique
+  userId          String
+  user            User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  leadId          String?
+  lead            Lead?                @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  requirementId   String?
+  requirement     Requirement?         @relation(fields: [requirementId], references: [id], onDelete: SetNull)
+  orderType       FavoriteProductType?
+  productId       String?
+  productName     String?
+  amount          Int?
+  costAmount      Int?
+  grossProfit     Int?
+  paymentStatus   PaymentStatus        @default(UNPAID)
+  orderStatus     OrderStatus          @default(PENDING_CONFIRM)
+  serviceStaffId  String?
+  serviceStaff    AdminUser?           @relation("ServiceOrders", fields: [serviceStaffId], references: [id], onDelete: SetNull)
+  travelDate      DateTime?
+  confirmationNo  String?
+  voucherUrl      String?
+  supplierName    String?
+  fulfillmentNote String?
+  remark          String?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  feedbacks Feedback[]
+  payments  Payment[]
+  trips     Trip[]
+
+  @@index([userId, createdAt])
+  @@index([orderStatus, createdAt])
+}
+
+model Payment {
+  id         String                @id @default(cuid())
+  orderId    String
+  order      Order                 @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  method     PaymentMethod
+  proofImage String?
+  note       String?
+  status     PlatformPaymentStatus @default(PENDING)
+  reviewedBy String?
+  reviewedAt DateTime?
+  createdAt  DateTime              @default(now())
+  updatedAt  DateTime              @updatedAt
+
+  @@index([orderId, createdAt])
+  @@index([status, createdAt])
+}
+
+model Trip {
+  id          String     @id @default(cuid())
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orderId     String?
+  order       Order?     @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  title       String
+  destination String
+  startDate   DateTime
+  endDate     DateTime
+  status      TripStatus @default(UPCOMING)
+  detailsJson String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([userId, status, startDate])
+  @@index([orderId])
+}
+
+model CustomerService {
+  id          String   @id @default(cuid())
+  name        String
+  channel     String
+  account     String
+  description String?
+  qrImage     String?
+  isPrimary   Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isActive, isPrimary])
+}
+
+model SupportTicket {
+  id          String              @id @default(cuid())
+  ticketNo    String              @unique
+  userId      String
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category    String
+  orderNo     String?
+  description String
+  attachment  String?
+  status      SupportTicketStatus @default(SUBMITTED)
+  reply       String?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+}
+
+model Feedback {
+  id            String         @id @default(cuid())
+  userId        String
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orderId       String?
+  order         Order?         @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  feedbackType  FeedbackType   @default(SUGGESTION)
+  title         String
+  content       String
+  images        String?
+  contactMobile String?
+  needCallback  Boolean        @default(false)
+  status        FeedbackStatus @default(UNPROCESSED)
+  replyContent  String?
+  handledById   String?
+  handledBy     AdminUser?     @relation("HandledFeedbacks", fields: [handledById], references: [id], onDelete: SetNull)
+  handledAt     DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
+}
+
+model Favorite {
+  id          String              @id @default(cuid())
+  userId      String
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productType FavoriteProductType
+  productId   String
+  createdAt   DateTime            @default(now())
+
+  @@unique([userId, productType, productId])
+  @@index([userId, createdAt])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  content   String
+  type      String   @default("SYSTEM")
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model Destination {
+  id         String        @id @default(cuid())
+  name       String
+  slug       String        @unique
+  imageUrl   String?
+  days       String?
+  budget     String?
+  season     String?
+  highlights String?
+  status     ProductStatus @default(ONLINE)
+  sortOrder  Int           @default(0)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  @@index([status, sortOrder])
+}
+
+model SiteSetting {
+  key         String   @id
+  value       String   @default("")
+  description String?
+  updatedAt   DateTime @updatedAt
+}
+
+model HomeBanner {
+  id        String        @id @default(cuid())
+  title     String
+  subtitle  String?
+  imageUrl  String?
+  linkUrl   String?
+  status    ProductStatus @default(ONLINE)
+  sortOrder Int           @default(0)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@index([status, sortOrder])
+}
+
+model Activity {
+  id          String        @id @default(cuid())
+  title       String
+  subtitle    String?
+  coverImage  String?
+  startTime   DateTime?
+  endTime     DateTime?
+  status      ProductStatus @default(ONLINE)
+  sortOrder   Int           @default(0)
+  productRefs String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([status, sortOrder, createdAt])
+}
+
+// ─── 旅游通 · 酒店代订线索 CRM ────────────────────────────────────
+
+model HotelLead {
+  id          String      @id @default(cuid())
+  leadNo      String      @unique // 业务编号 LT...
+  inquiryType InquiryType @default(HOTEL)
+
+  // 出行意向（两种问卷共享）
+  destination String
+  timeframe   String? // 轻量问卷：例如 一个月内 / 1-3个月 / 还没确定
+
+  // 详细酒店询价字段（轻量问卷下可为空）
+  checkInDate  DateTime?
+  checkOutDate DateTime?
+  nights       Int?
+  roomCount    String? // "1间" / "2间" / "3间" / "4间及以上"
+  guestCount   String // "1人" / "2人" / "3-4人" / "5人及以上"（两种问卷都收）
+  budget       String? // "300元以内/晚" 等
+  preferences  String    @default("[]") // JSON array string
+
+  // 联系方式
+  contactType  ContactType
+  contactValue String
+  remark       String?
+
+  // 来源信息
+  source      String  @default("官网首页")
+  utmSource   String?
+  utmMedium   String?
+  utmCampaign String?
+  referrer    String?
+  landingPage String?
+  userAgent   String?
+  ip          String?
+
+  // 状态 & 跟进
+  status         HotelLeadStatus @default(NEW)
+  assignedToId   String?
+  assignedTo     AdminUser?      @relation("HotelLeadAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  lastFollowedAt DateTime?
+
+  // 成交
+  dealAmount Int? // 单位：分
+  dealRemark String?
+  dealAt     DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  notes      HotelLeadNote[]
+  statusLogs HotelLeadStatusLog[]
+
+  @@index([status, createdAt])
+  @@index([destination])
+  @@index([assignedToId])
+  @@index([contactValue])
+  @@index([createdAt])
+  @@index([inquiryType, createdAt])
+}
+
+model HotelLeadNote {
+  id          String    @id @default(cuid())
+  leadId      String
+  lead        HotelLead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  adminUserId String
+  adminUser   AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+  content     String
+  createdAt   DateTime  @default(now())
+
+  @@index([leadId, createdAt])
+}
+
+model HotelLeadStatusLog {
+  id         String           @id @default(cuid())
+  leadId     String
+  lead       HotelLead        @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  fromStatus HotelLeadStatus?
+  toStatus   HotelLeadStatus
+  operatorId String?
+  operator   AdminUser?       @relation("HotelLeadStatusOperator", fields: [operatorId], references: [id], onDelete: SetNull)
+  createdAt  DateTime         @default(now())
+
+  @@index([leadId, createdAt])
+}
+
+// ─── 旅游通 · 移动端询价成单系统 ─────────────────────────────────────
+
+// 询价单状态机
+enum InquiryOrderStatus {
+  NEW // 刚创建，待 AI 分析
+  AI_COLLECTING // AI 正在追问补全信息
+  PRICE_REFERENCE_READY // 参考价格已拉取，等用户查看
+  WAITING_USER_CONFIRM // 等待用户确认需求摘要
+  WAITING_CONTACT_INFO // 等待用户填写姓名 + 电话
+  WAITING_PAYMENT // 等待支付（或定金确认）
+  PAID // 已支付 / 已确认定金
+  WAITING_PROCUREMENT // 进入采购流程（后台处理中）
+  COMPLETED // 全程完成
+  CANCELLED // 用户取消
+  ABNORMAL // 异常（需人工介入）
+}
+
+model InquiryOrder {
+  id      String @id @default(cuid())
+  orderNo String @unique // IQ + timestamp + random
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  // ── 用户原始输入 ──────────────────────────────────────────────
+  destination       String
+  checkInDate       DateTime?
+  checkOutDate      DateTime?
+  nights            Int?
+  roomCount         Int       @default(1)
+  guestCount        Int       @default(2)
+  budget            String? // "300元以内/晚" 等区间文字
+  hotelPreference   String? // "市中心" / "近景区" 等
+  breakfastIncluded Boolean? // 含早餐
+  cancellable       Boolean? // 可免费取消
+  needInvoice       Boolean   @default(false)
+  notes             String?
+
+  // ── AI 结构化输出 ─────────────────────────────────────────────
+  aiStructuredJson   String? // JSON: 标准化后的需求
+  aiMissingFields    String? // JSON array: 缺失字段名
+  aiFollowUpQuestion String? // AI 追问文本
+  aiUserExplanation  String? // AI 给用户的解释文案
+  aiStaffSummary     String? // AI 给客服的简报
+
+  // ── 联系方式（Step 5 才填）───────────────────────────────────
+  contactName  String?
+  contactPhone String?
+
+  // ── 价格参考 ─────────────────────────────────────────────────
+  // 关联 PriceReference
+
+  // ── 来源信息 ─────────────────────────────────────────────────
+  source      String  @default("移动询价")
+  utmSource   String?
+  utmMedium   String?
+  utmCampaign String?
+  referrer    String?
+  userAgent   String?
+  ip          String?
+
+  // ── 状态 & 跟进 ───────────────────────────────────────────────
+  status         InquiryOrderStatus @default(NEW)
+  assignedToId   String?
+  assignedTo     AdminUser?         @relation("InquiryOrderAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  lastFollowedAt DateTime?
+
+  // ── 成交 ─────────────────────────────────────────────────────
+  dealAmount Int?
+  dealRemark String?
+  dealAt     DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  priceReferences InquiryPriceReference[]
+  statusLogs      InquiryOrderStatusLog[]
+  xianYuTasks     XianYuTask[]
+
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
+  @@index([destination])
+  @@index([assignedToId])
+  @@index([contactPhone])
+  @@index([createdAt])
+}
+
+model PriceSearchRecord {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  hotelName     String
+  roomType      String?
+  checkInDate   DateTime?
+  checkOutDate  DateTime?
+  nights        Int       @default(1)
+  guestCount    Int       @default(2)
+  roomCount     Int       @default(1)
+  minTotalPrice Int?
+  resultsJson   String?
+  createdAt     DateTime  @default(now())
+
+  @@index([userId, createdAt])
+  @@index([hotelName])
+}
+
+// 公域价格参考（美团 / 携程 / 飞猪 / 同程）
+model InquiryPriceReference {
+  id      String       @id @default(cuid())
+  orderId String
+  order   InquiryOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  platform          String // "美团" / "携程" / "飞猪" / "同程"
+  hotelName         String
+  roomType          String?
+  pricePerNight     Int // 单位：分
+  totalPrice        Int? // 单位：分（nights * pricePerNight）
+  breakfastIncluded Boolean  @default(false)
+  cancellable       Boolean  @default(true)
+  sourceUrl         String? // 来源链接（mock 时可为空）
+  queriedAt         DateTime @default(now())
+  isMock            Boolean  @default(true) // 是否为 mock 数据
+
+  createdAt DateTime @default(now())
+
+  @@index([orderId])
+  @@index([platform])
+}
+
+model InquiryOrderStatusLog {
+  id         String              @id @default(cuid())
+  orderId    String
+  order      InquiryOrder        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  fromStatus InquiryOrderStatus?
+  toStatus   InquiryOrderStatus
+  remark     String?
+  createdAt  DateTime            @default(now())
+
+  @@index([orderId, createdAt])
+}
+
+// ─── AI 私域机器人 ────────────────────────────────────────────────
+
+enum RobotLeadStatus {
+  NEW
+  FRIEND_PENDING
+  FRIEND_ACCEPTED
+  QUOTED
+  CLOSED
+}
+
+enum RobotTaskType {
+  add_friend
+  send_opening_message
+  send_quote_message
+}
+
+enum RobotTaskStatus {
+  pending
+  done
+  failed
+}
+
+model RobotLead {
+  id            String          @id @default(cuid())
+  name          String
+  wechat        String
+  destination   String
+  travelDate    String?
+  peopleCount   Int             @default(1)
+  budget        String?
+  notes         String?
+  aiRequestNote String?
+  aiOpening     String?
+  status        RobotLeadStatus @default(NEW)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  tasks    RobotTask[]
+  chatLogs ChatLog[]
+
+  @@index([status, createdAt])
+}
+
+model RobotTask {
+  id          String          @id @default(cuid())
+  leadId      String
+  lead        RobotLead       @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  taskType    RobotTaskType
+  status      RobotTaskStatus @default(pending)
+  payloadJson String?
+  doneAt      DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([status, createdAt])
+  @@index([leadId])
+}
+
+model ChatLog {
+  id        String    @id @default(cuid())
+  leadId    String
+  lead      RobotLead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  role      String
+  content   String
+  createdAt DateTime  @default(now())
+
+  @@index([leadId, createdAt])
+}
+
+// ── 闲鱼自动询价机器人 ────────────────────────────────────────────────────
+
+enum XianYuTaskStatus {
+  PENDING // 等待机器人处理
+  SEARCHING // 机器人搜索卖家中
+  MESSAGING // 正在发送询价消息
+  WAITING_REPLIES // 已发完，等待商家回复
+  AUTO_FOLLOWUP // 自动处理中途追问
+  COLLECTING // 统一收集回复中
+  AI_ANALYZING // AI 正在分析报价
+  QUOTED // AI 报价已生成，等待客户决定
+  WAITING_HUMAN_CONFIRM // 客户确认后，等待人工接手成交
+  NEEDS_HUMAN // 机器人遇到付款/加微信/身份信息等，需要人工介入
+  FAILED // 失败
+}
+
+model XianYuTask {
+  id           String           @id @default(cuid())
+  inquiryId    String
+  inquiry      InquiryOrder     @relation(fields: [inquiryId], references: [id], onDelete: Cascade)
+  hotelName    String
+  city         String
+  roomType     String?
+  checkInDate  String
+  checkOutDate String
+  nights       Int
+  guestCount   Int              @default(2)
+  roomCount    Int              @default(1)
+  status       XianYuTaskStatus @default(PENDING)
+  sentCount    Int              @default(0)
+  aiSummary    String? // AI 生成的报价摘要 JSON
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  messages XianYuMessage[]
+  quotes   XianYuQuote[]
+
+  @@index([status, createdAt])
+  @@index([inquiryId])
+}
+
+model XianYuMessage {
+  id         String     @id @default(cuid())
+  taskId     String
+  task       XianYuTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  sellerId   String
+  sellerName String?
+  chatUrl    String?
+  sentAt     DateTime   @default(now())
+  replied    Boolean    @default(false)
+  replyText  String?
+  repliedAt  DateTime?
+
+  @@index([taskId])
+}
+
+model XianYuQuote {
+  id                String     @id @default(cuid())
+  taskId            String
+  task              XianYuTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  sellerId          String
+  sellerName        String?
+  pricePerNight     Int // 元
+  totalPrice        Int // 元
+  breakfastIncluded Boolean    @default(false)
+  cancellable       Boolean    @default(true)
+  extraServices     String? // JSON array 字符串
+  rawReply          String
+  aiParsed          Boolean    @default(false)
+  createdAt         DateTime   @default(now())
+
+  @@index([taskId])
+}
+
+// ── 旅行社候选供应链 ───────────────────────────────────────────────────
+
+enum SupplierStatus {
+  DISCOVERED
+  RESEARCHED
+  CONTACT_PENDING
+  CONTACTED
+  QUALIFICATION_PENDING
+  VERIFIED
+  NEGOTIATING
+  ACTIVE
+  PAUSED
+  REJECTED
+  EXPIRED
+}
+
+enum SupplierType {
+  NATIONAL
+  GBA_LOCAL
+  DESTINATION_DMC
+  OVERSEAS_DMC
+}
+
+enum SupplierLicenseStatus {
+  UNVERIFIED
+  VALID
+  EXPIRED
+  SUSPENDED
+  NOT_FOUND
+  CONFLICT
+}
+
+enum SupplierSourceType {
+  REGULATOR
+  GOVERNMENT
+  CREDIT_SYSTEM
+  OFFICIAL_WEBSITE
+  OFFICIAL_ACCOUNT
+  INDUSTRY_ASSOCIATION
+  OTA_OFFICIAL_STORE
+  OTHER
+}
+
+enum SupplierConfidence {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum SupplierVerificationStatus {
+  PENDING
+  CONFIRMED
+  QUESTIONED
+  REJECTED
+}
+
+enum SupplierRiskSeverity {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum SupplierPublicationStatus {
+  DRAFT
+  APPROVED
+  PUBLISHED
+  UNPUBLISHED
+}
+
+enum SupplierInquiryStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  READY
+  CLOSED
+  CANCELLED
+}
+
+model TravelSupplier {
+  id                 String         @id @default(cuid())
+  brandName          String
+  legalEntityName    String         @unique
+  slug               String         @unique
+  supplierType       SupplierType
+  status             SupplierStatus @default(RESEARCHED)
+  summary            String?
+  province           String?
+  city               String?
+  address            String?
+  website            String?
+  officialAccount    String?
+  creditCode         String?        @unique
+  internalScore      Int            @default(0)
+  isVerified         Boolean        @default(false)
+  isPublic           Boolean        @default(false)
+  publicContentReady Boolean        @default(false)
+  verifiedAt         DateTime?
+  publishedAt        DateTime?
+  lastReviewedAt     DateTime?
+  nextFollowUpAt     DateTime?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  brands            SupplierBrand[]
+  licenses          SupplierLicense[]
+  services          SupplierService[]
+  destinations      SupplierDestination[]
+  contacts          SupplierContact[]
+  sources           SupplierSource[]
+  verifications     SupplierVerification[]
+  risks             SupplierRiskFlag[]
+  interactions      SupplierInteraction[]
+  contracts         SupplierContract[]
+  publications      SupplierPublication[]
+  auditLogs         SupplierAuditLog[]
+  inquiryRecipients SupplierInquiryRecipient[]
+
+  @@index([status, isVerified, isPublic])
+  @@index([supplierType, province, city])
+  @@index([internalScore])
+}
+
+model SupplierBrand {
+  id           String         @id @default(cuid())
+  supplierId   String
+  supplier     TravelSupplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  name         String
+  relationship String         @default("OPERATED_BY")
+  sourceUrl    String?
+  createdAt    DateTime       @default(now())
+
+  @@unique([supplierId, name])
+}
+
+model SupplierLicense {
+  id                 String                @id @default(cuid())
+  supplierId         String
+  supplier           TravelSupplier        @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  licenseType        String
+  licenseNumber      String?               @unique
+  legalEntityName    String
+  businessScope      String?
+  issuingAuthority   String?
+  status             SupplierLicenseStatus @default(UNVERIFIED)
+  verificationSource String?
+  verifiedAt         DateTime?
+  validFrom          DateTime?
+  validUntil         DateTime?
+  evidenceUrl        String?
+  verifiedBy         String?
+  needsManualReview  Boolean               @default(true)
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+
+  @@index([supplierId, status])
+}
+
+model SupplierService {
+  id          String         @id @default(cuid())
+  supplierId  String
+  supplier    TravelSupplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  code        String
+  name        String
+  description String?
+  sourceUrl   String?
+  verified    Boolean        @default(false)
+  createdAt   DateTime       @default(now())
+
+  @@unique([supplierId, code])
+  @@index([code, verified])
+}
+
+model SupplierDestination {
+  id          String         @id @default(cuid())
+  supplierId  String
+  supplier    TravelSupplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  name        String
+  countryCode String?
+  region      String?
+  sourceUrl   String?
+  verified    Boolean        @default(false)
+  createdAt   DateTime       @default(now())
+
+  @@unique([supplierId, name])
+  @@index([name, verified])
+}
+
+model SupplierContact {
+  id          String         @id @default(cuid())
+  supplierId  String
+  supplier    TravelSupplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  contactType String
+  label       String?
+  value       String
+  sourceUrl   String
+  verifiedAt  DateTime?
+  isPublic    Boolean        @default(false)
+  createdAt   DateTime       @default(now())
+
+  @@unique([supplierId, contactType, value])
+}
+
+model SupplierSource {
+  id             String             @id @default(cuid())
+  supplierId     String
+  supplier       TravelSupplier     @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  title          String
+  url            String
+  sourceType     SupplierSourceType
+  fields         String
+  queriedAt      DateTime
+  confidence     SupplierConfidence
+  summary        String?
+  isAccessible   Boolean            @default(true)
+  manualReviewed Boolean            @default(false)
+  createdAt      DateTime           @default(now())
+
+  @@unique([supplierId, url, fields])
+  @@index([supplierId, confidence])
+}
+
+model SupplierVerification {
+  id         String                     @id @default(cuid())
+  supplierId String
+  supplier   TravelSupplier             @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  fieldName  String
+  status     SupplierVerificationStatus @default(PENDING)
+  finding    String?
+  sourceUrl  String?
+  verifiedBy String?
+  verifiedAt DateTime?
+  createdAt  DateTime                   @default(now())
+
+  @@index([supplierId, status])
+}
+
+model SupplierRiskFlag {
+  id         String               @id @default(cuid())
+  supplierId String
+  supplier   TravelSupplier       @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  code       String
+  label      String
+  severity   SupplierRiskSeverity @default(MEDIUM)
+  detail     String?
+  resolvedAt DateTime?
+  resolvedBy String?
+  createdAt  DateTime             @default(now())
+
+  @@unique([supplierId, code])
+  @@index([code, resolvedAt])
+}
+
+model SupplierInteraction {
+  id            String         @id @default(cuid())
+  supplierId    String
+  supplier      TravelSupplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  contactMethod String
+  contactedAt   DateTime
+  contactPerson String?
+  channel       String
+  outcome       String
+  nextStep      String?
+  followUpAt    DateTime?
+  internalNote  String?
+  createdBy     String
+  createdAt     DateTime       @default(now())
+
+  @@index([supplierId, contactedAt])
+  @@index([followUpAt])
+}
+
+model SupplierContract {
+  id             String         @id @default(cuid())
+  supplierId     String
+  supplier       TravelSupplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  status         String         @default("NOT_STARTED")
+  contractNumber String?
+  validFrom      DateTime?
+  validUntil     DateTime?
+  inquiryConsent Boolean        @default(false)
+  consentChannel String?
+  notes          String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([supplierId, status])
+}
+
+model SupplierPublication {
+  id            String                    @id @default(cuid())
+  supplierId    String
+  supplier      TravelSupplier            @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  status        SupplierPublicationStatus @default(DRAFT)
+  publicSummary String?
+  reviewedBy    String?
+  reviewedAt    DateTime?
+  publishedAt   DateTime?
+  unpublishedAt DateTime?
+  createdAt     DateTime                  @default(now())
+  updatedAt     DateTime                  @updatedAt
+
+  @@index([supplierId, status])
+}
+
+model SupplierAuditLog {
+  id           String         @id @default(cuid())
+  supplierId   String
+  supplier     TravelSupplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  actorAdminId String
+  action       String
+  fieldName    String?
+  beforeValue  String?
+  afterValue   String?
+  reason       String?
+  createdAt    DateTime       @default(now())
+
+  @@index([supplierId, createdAt])
+  @@index([actorAdminId, createdAt])
+}
+
+// Future-only inquiry structures. No sender or external automation is wired in phase one.
+model SupplierInquiry {
+  id              String                @id @default(cuid())
+  requirementJson String
+  status          SupplierInquiryStatus @default(DRAFT)
+  approvedBy      String?
+  approvedAt      DateTime?
+  idempotencyKey  String?               @unique
+  createdBy       String
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  recipients SupplierInquiryRecipient[]
+}
+
+model SupplierInquiryRecipient {
+  id               String          @id @default(cuid())
+  inquiryId        String
+  inquiry          SupplierInquiry @relation(fields: [inquiryId], references: [id], onDelete: Cascade)
+  supplierId       String
+  supplier         TravelSupplier  @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  consentConfirmed Boolean         @default(false)
+  status           String          @default("PENDING")
+  createdAt        DateTime        @default(now())
+
+  messages  SupplierInquiryMessage[]
+  responses SupplierResponse[]
+
+  @@unique([inquiryId, supplierId])
+}
+
+model SupplierInquiryMessage {
+  id          String                   @id @default(cuid())
+  recipientId String
+  recipient   SupplierInquiryRecipient @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  direction   String
+  channel     String
+  body        String
+  status      String                   @default("DRAFT")
+  sentAt      DateTime?
+  createdAt   DateTime                 @default(now())
+
+  @@index([recipientId, createdAt])
+}
+
+model SupplierResponse {
+  id          String                   @id @default(cuid())
+  recipientId String
+  recipient   SupplierInquiryRecipient @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  rawSummary  String
+  receivedAt  DateTime
+  reviewedBy  String?
+  reviewedAt  DateTime?
+  createdAt   DateTime                 @default(now())
+
+  quoteCandidates SupplierQuoteCandidate[]
+}
+
+model SupplierQuoteCandidate {
+  id         String           @id @default(cuid())
+  responseId String
+  response   SupplierResponse @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  currency   String           @default("CNY")
+  amount     Int?
+  priceText  String?
+  terms      String?
+  isReviewed Boolean          @default(false)
+  createdAt  DateTime         @default(now())
+
+  @@index([responseId, isReviewed])
+}
+
+// ─── 旅游通 · 第一代 AI 旅行顾问 ────────────────────────────────────────
+
+enum AIConversationStatus {
+  ACTIVE
+  HANDOFF_REQUESTED
+  HUMAN_TAKEN_OVER
+  CLOSED
+}
+
+enum AIMessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+enum AIModelTask {
+  MAIN_CHAT
+  COMPLEX_PLAN
+  EMBEDDING
+  RERANK
+  LOCAL_FALLBACK
+}
+
+enum AIKnowledgeCategory {
+  DESTINATION
+  HOTEL
+  ITINERARY
+  FAQ
+}
+
+model AIConversation {
+  id              String               @id @default(cuid())
+  sessionKey      String               @unique
+  userId          String?
+  status          AIConversationStatus @default(ACTIVE)
+  profileJson     String               @default("{}")
+  summary         String?
+  tagsJson        String               @default("[]")
+  highValue       Boolean              @default(false)
+  handoffReason   String?
+  assignedAdminId String?
+  humanTakeoverAt DateTime?
+  lastMessageAt   DateTime             @default(now())
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  messages   AIChatMessage[]
+  modelCalls AIModelCall[]
+  handoffs   AIHandoff[]
+
+  @@index([status, lastMessageAt])
+  @@index([highValue, lastMessageAt])
+  @@index([userId, lastMessageAt])
+}
+
+model AIChatMessage {
+  id             String         @id @default(cuid())
+  conversationId String
+  conversation   AIConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           AIMessageRole
+  content        String
+  modelName      String?
+  taskType       AIModelTask?
+  sourceIdsJson  String         @default("[]")
+  createdAt      DateTime       @default(now())
+
+  @@index([conversationId, createdAt])
+}
+
+model AIModelCall {
+  id             String          @id @default(cuid())
+  conversationId String?
+  conversation   AIConversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  taskType       AIModelTask
+  modelName      String
+  provider       String
+  latencyMs      Int
+  success        Boolean         @default(true)
+  inputTokens    Int?
+  outputTokens   Int?
+  errorCode      String?
+  createdAt      DateTime        @default(now())
+
+  @@index([taskType, createdAt])
+  @@index([conversationId, createdAt])
+}
+
+model AIHandoff {
+  id              String         @id @default(cuid())
+  conversationId  String
+  conversation    AIConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  customerName    String?
+  contact         String?
+  summary         String
+  status          String         @default("PENDING")
+  assignedAdminId String?
+  handledAt       DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([status, createdAt])
+  @@index([conversationId, createdAt])
+}
+
+model AIKnowledgeDocument {
+  id           String              @id @default(cuid())
+  category     AIKnowledgeCategory
+  title        String
+  city         String?
+  content      String
+  keywordsJson String              @default("[]")
+  metadataJson String              @default("{}")
+  embeddingRef String?
+  enabled      Boolean             @default(true)
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  @@index([category, enabled])
+  @@index([city, enabled])
+}

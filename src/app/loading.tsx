@@ -1,0 +1,3 @@
+export default function Loading() {
+  return <main className="min-h-screen bg-[#f4f8fc] px-5 py-6" aria-label="页面加载中" aria-busy="true"><div className="mx-auto max-w-[520px]"><div className="h-14 animate-pulse rounded-[18px] bg-white"/><div className="mt-5 h-[260px] animate-pulse rounded-[26px] bg-[#dce9f7]"/><div className="mt-6 grid grid-cols-2 gap-3">{[1,2,3,4].map((item)=><div key={item} className="h-24 animate-pulse rounded-[18px] bg-white"/>)}</div><div className="mt-7 h-5 w-32 animate-pulse rounded-full bg-[#dce9f7]"/><div className="mt-4 h-36 animate-pulse rounded-[22px] bg-white"/><p className="mt-6 text-center text-[11px] font-medium text-[#7890aa]">正在准备你的旅途体验…</p></div></main>;
+}
