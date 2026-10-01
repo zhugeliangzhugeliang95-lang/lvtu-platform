@@ -4,6 +4,7 @@ import { getUserIdFromCookie } from "@/lib/userAuth";
 import { getMembershipConfig, isMembershipActive, makeMemberNo, makeMembershipPaymentNo } from "@/lib/membership";
 import { readLimitedJson, requireTrustedOrigin, validationError } from "@/lib/security/request";
 import { enforceRateLimit } from "@/lib/rateLimit";
+import { analyzePaymentProof } from "@/lib/payment-proof";
 
 function validPhone(value: string) { return /^1[3-9]\d{9}$/.test(value.replace(/[\s-]/g, "")); }
 
@@ -56,11 +57,16 @@ export async function PATCH(req: Request) {
   if (!parsed.ok) return parsed.response;
   const body = parsed.data as Record<string, unknown>;
   const paymentNo = typeof body.paymentNo === "string" ? body.paymentNo.trim() : "";
+  const proofImage = typeof body.proofImage === "string" && /^\/api\/uploads\/payment-[a-f0-9]{32}\.webp$/.test(body.proofImage) ? body.proofImage : "";
   if (!paymentNo) return validationError();
   const payment = await prisma.membershipPayment.findFirst({ where: { paymentNo, userId } });
   if (!payment) return NextResponse.json({ error: "付款申请不存在" }, { status: 404 });
-  if (payment.status === "CONFIRMED") return NextResponse.json({ ok: true, status: payment.status });
+  if (payment.status === "CONFIRMED") return NextResponse.json({ ok: true, status: payment.status, proofImage: payment.proofImage });
   if (!["PENDING", "USER_MARKED_PAID"].includes(payment.status)) return NextResponse.json({ error: "当前付款申请不可更新" }, { status: 409 });
-  const updated = await prisma.membershipPayment.update({ where: { id: payment.id }, data: { status: "USER_MARKED_PAID", remark: typeof body.remark === "string" ? body.remark.trim().slice(0, 500) : payment.remark } });
-  return NextResponse.json({ ok: true, status: updated.status });
+  const image = proofImage || payment.proofImage;
+  if (!image) return NextResponse.json({ error: "请先上传付款截图" }, { status: 400 });
+  const updated = await prisma.membershipPayment.update({ where: { id: payment.id }, data: { status: "USER_MARKED_PAID", proofImage: image, remark: typeof body.remark === "string" ? body.remark.trim().slice(0, 500) : payment.remark } });
+  const ai = await analyzePaymentProof({ proofImage: image, expectedAmount: payment.amount, paymentNo: payment.paymentNo });
+  const checked = await prisma.membershipPayment.update({ where: { id: updated.id }, data: { proofAiStatus: ai.status, proofAiSummary: ai.summary, proofAiJson: JSON.stringify({ amount: ai.amount, transactionTime: ai.transactionTime, recipient: ai.recipient, confidence: ai.confidence, rawText: ai.rawText ?? null }), proofAiCheckedAt: new Date() } });
+  return NextResponse.json({ ok: true, status: checked.status, proofImage: checked.proofImage, ai: { status: ai.status, confidence: ai.confidence, amount: ai.amount, summary: ai.summary } });
 }

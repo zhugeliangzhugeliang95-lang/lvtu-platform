@@ -91,6 +91,13 @@ function clientFor(task: AdvisorTask) {
       provider: "deepseek-compatible",
     };
   }
+  if (process.env.VOLCENGINE_API_KEY && (process.env.AI_PROVIDER || "auto").toLowerCase() !== "cloud") {
+    return {
+      client: new OpenAI({ apiKey: process.env.VOLCENGINE_API_KEY, baseURL: "https://ark.cn-beijing.volces.com/api/v3" }),
+      model: process.env.VOLCENGINE_CHAT_MODEL || process.env.VOLCENGINE_MODEL || "doubao-seed-1-6-lite-251015",
+      provider: "volcengine",
+    };
+  }
   const apiKey = process.env.QWEN_API_KEY || process.env.DASHSCOPE_API_KEY;
   if (!apiKey) return null;
   return {
@@ -112,7 +119,7 @@ export async function generateModelReply(params: {
   // AI_USE_OLLAMA=true) to enable the installed Ollama model for deep plans.
   // Use AI_PROVIDER=auto only when a paid compatible API is an intentional
   // fallback; AI_PROVIDER=cloud skips Ollama.
-  const providerMode = (process.env.AI_PROVIDER || "local").toLowerCase();
+  const providerMode = (process.env.AI_PROVIDER || "auto").toLowerCase();
   const canUseLocalPlanner = params.task === "COMPLEX_PLAN" && Boolean(params.profile.destination) && params.missingFields.length <= 1;
   const useOllama = providerMode === "ollama" || process.env.AI_USE_OLLAMA === "true";
   if (providerMode !== "cloud" && (useOllama || providerMode === "auto") && canUseLocalPlanner) {
@@ -124,7 +131,7 @@ export async function generateModelReply(params: {
     }
   }
 
-  if (providerMode !== "cloud" && providerMode !== "auto") return null;
+  if (providerMode !== "cloud" && providerMode !== "auto" && providerMode !== "volcengine") return null;
 
   const selected = clientFor(params.task);
   if (!selected) return null;

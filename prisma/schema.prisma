@@ -390,20 +390,25 @@ model Membership {
 }
 
 model MembershipPayment {
-  id             String                  @id @default(cuid())
-  paymentNo      String                  @unique
-  userId         String
-  user           User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  membershipId   String?
-  membership     Membership?             @relation(fields: [membershipId], references: [id], onDelete: SetNull)
-  amount         Int
-  method         PaymentMethod           @default(WECHAT)
-  status         MembershipPaymentStatus @default(PENDING)
-  remark         String?
-  createdAt      DateTime                @default(now())
-  confirmedAt    DateTime?
-  confirmedBy    String?
-  confirmedAdmin AdminUser?              @relation("MembershipPaymentConfirmer", fields: [confirmedBy], references: [id], onDelete: SetNull)
+  id               String                  @id @default(cuid())
+  paymentNo        String                  @unique
+  userId           String
+  user             User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  membershipId     String?
+  membership       Membership?             @relation(fields: [membershipId], references: [id], onDelete: SetNull)
+  amount           Int
+  method           PaymentMethod           @default(WECHAT)
+  status           MembershipPaymentStatus @default(PENDING)
+  proofImage       String?
+  proofAiStatus    String?
+  proofAiSummary   String?
+  proofAiJson      String?
+  proofAiCheckedAt DateTime?
+  remark           String?
+  createdAt        DateTime                @default(now())
+  confirmedAt      DateTime?
+  confirmedBy      String?
+  confirmedAdmin   AdminUser?              @relation("MembershipPaymentConfirmer", fields: [confirmedBy], references: [id], onDelete: SetNull)
 
   @@index([userId, createdAt])
   @@index([status, createdAt])
@@ -729,17 +734,21 @@ model Order {
 }
 
 model Payment {
-  id         String                @id @default(cuid())
-  orderId    String
-  order      Order                 @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  method     PaymentMethod
-  proofImage String?
-  note       String?
-  status     PlatformPaymentStatus @default(PENDING)
-  reviewedBy String?
-  reviewedAt DateTime?
-  createdAt  DateTime              @default(now())
-  updatedAt  DateTime              @updatedAt
+  id               String                @id @default(cuid())
+  orderId          String
+  order            Order                 @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  method           PaymentMethod
+  proofImage       String?
+  proofAiStatus    String?
+  proofAiSummary   String?
+  proofAiJson      String?
+  proofAiCheckedAt DateTime?
+  note             String?
+  status           PlatformPaymentStatus @default(PENDING)
+  reviewedBy       String?
+  reviewedAt       DateTime?
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
 
   @@index([orderId, createdAt])
   @@index([status, createdAt])

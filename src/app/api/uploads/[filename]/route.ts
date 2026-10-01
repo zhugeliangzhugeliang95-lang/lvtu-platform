@@ -17,11 +17,11 @@ export async function GET(_req: Request, { params }: { params: Promise<{ filenam
     const [admin, userId] = await Promise.all([getAdminSession(), getUserIdFromCookie()]);
     if (!admin && !userId) return new Response("unauthorized", { status: 401 });
     if (!admin) {
-      const proof = await prisma.payment.findFirst({
-        where: { proofImage: `/api/uploads/${filename}`, order: { userId: userId! } },
-        select: { id: true },
-      });
-      if (!proof) return new Response("not found", { status: 404 });
+      const [proof, membershipProof] = await Promise.all([
+        prisma.payment.findFirst({ where: { proofImage: `/api/uploads/${filename}`, order: { userId: userId! } }, select: { id: true } }),
+        prisma.membershipPayment.findFirst({ where: { proofImage: `/api/uploads/${filename}`, userId: userId! }, select: { id: true } }),
+      ]);
+      if (!proof && !membershipProof) return new Response("not found", { status: 404 });
     }
   }
 

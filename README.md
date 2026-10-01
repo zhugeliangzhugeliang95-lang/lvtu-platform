@@ -23,6 +23,8 @@ cp .env.example .env
 - `USER_SESSION_SECRET`、`ADMIN_SECRET`、`GUEST_INQUIRY_SECRET`：生产必填且必须互不相同的随机密钥
 - `APP_ORIGIN`：生产站点的完整 Origin，例如部署域名对应的 `https://...`
 - `SUPPLIER_BOT_TOKEN`：供应商 Worker 必填；缺失时所有 Worker 接口失败关闭
+- `AI_PROVIDER=auto`：优先使用已配置的视觉/对话模型，未配置时自动回退本地顾问；如使用豆包对话，填写 `VOLCENGINE_API_KEY` 与 `VOLCENGINE_CHAT_MODEL`
+- `VOLCENGINE_VISION_MODEL`：填写支持图片理解的方舟模型后，付款截图会自动识别金额、时间和收款方；未配置时保持人工审核
 - `ADMIN_USER` / `ADMIN_PASS`：可选的后台兼容账号，生产优先使用数据库管理员
 
 可使用 `openssl rand -base64 48` 分别生成三个 Session/签名密钥和 Worker Token，不要把生成结果提交到仓库。
@@ -64,9 +66,11 @@ AI 旅行顾问的平台入口、接口协议、模型配置与上线验收见 [
 
 1. 用户登录后进入 `/membership`，填写姓名、绑定手机号并同意会员协议。
 2. 页面显示后台配置的收款二维码和付款说明。
-3. 用户点击“我已完成付款”，付款进入 `USER_MARKED_PAID`。
-4. 管理员在 `/admin/membership-payments` 二次确认到账。
-5. 首次开通从确认时间起增加配置天数；有效会员续费从原到期日继续顺延。
+3. 用户上传付款截图并提交；系统会记录截图，若配置了视觉模型，会显示 AI 的金额匹配结果。
+4. 付款进入 `USER_MARKED_PAID`，管理员在 `/admin/membership-payments` 查看截图、AI提示和微信到账记录后确认。
+5. 只有管理员确认后才会开通会员；首次开通从确认时间起增加配置天数，有效会员续费从原到期日继续顺延。
+
+普通酒店、旅行社和其他服务订单使用同一套截图上传与 AI 辅助识别流程，最终仍以人工确认实际到账为准。AI 识别不会自动开通会员、标记已付款或完成预订。
 
 会员价格、有效天数、二维码和付款说明在 `/admin/settings/membership` 配置，不在前端硬编码。
 
