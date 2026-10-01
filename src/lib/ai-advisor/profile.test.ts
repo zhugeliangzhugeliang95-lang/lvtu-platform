@@ -38,4 +38,9 @@ describe("AI旅行顾问画像解析", () => {
     expect(extractProfile([{ role: "user", content: "想玩5天4晚，行程轻松一点，不赶路" }])).toMatchObject({ duration: "5天4晚" });
     expect(extractProfile([{ role: "user", content: "2大1小去三亚" }]).travelers).toBe(3);
   });
+
+  it("不会把出发城市误判成目的地", () => {
+    expect(extractProfile([{ role: "user", content: "上海出发" }])).toMatchObject({ origin: "上海" });
+    expect(extractProfile([{ role: "user", content: "上海出发，明天去北京" }])).toMatchObject({ origin: "上海", destination: "北京", travelTime: "明天" });
+  });
 });

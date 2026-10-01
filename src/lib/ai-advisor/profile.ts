@@ -46,7 +46,7 @@ function extractTime(text: string) {
   const patterns = [
     /(?:今年|明年)?(?:元旦|春节|清明|五一|端午|暑假|国庆|中秋)/,
     /\d{1,2}月(?:\d{1,2}(?:日|号))?(?:[至到\-~]\d{1,2}(?:日|号))?/,
-    /(?:下周|下个月|月底|周末|寒假|暑假|近期|年底)/,
+    /(?:今天|明天|后天|下周|下个月|月底|周末|寒假|暑假|近期|年底)/,
     /\d{4}[年\-/]\d{1,2}(?:[月\-/]\d{1,2})?/,
   ];
   for (const pattern of patterns) {
@@ -85,15 +85,16 @@ export function extractProfile(messages: AdvisorMessage[], current?: Partial<Tra
   const text = messages.filter((message) => message.role === "user").map((message) => message.content).join("；");
   const latest = [...messages].reverse().find((message) => message.role === "user")?.content ?? "";
   const cities = extractCities(text);
-  const originMatch = text.match(/从([^，。；、\s]{2,8})(?:出发|走)/);
-  if (originMatch) profile.origin = CITIES.find((city) => originMatch[1].includes(city)) ?? originMatch[1];
-  if (!profile.origin && cities.length > 1) profile.origin = cities[0];
+  const originMatch = text.match(/(?:从|由|出发地[是为：:]?\s*)([\u4e00-\u9fa5]{2,10})(?:出发|出行|启程|走)/)
+    ?? text.match(/(?:^|[；，。！？]\s*)([\u4e00-\u9fa5]{2,10})(?:出发|出行|启程|走)/);
+  const originCity = originMatch ? CITIES.find((city) => originMatch[1].includes(city)) : undefined;
+  if (originCity) profile.origin = originCity;
 
   const destinationMatch = text.match(/(?:想去|去|到|目的地(?:是|选)?)([^，。；、\s]{2,10})/);
   const matchedDestination = destinationMatch
     ? CITIES.find((city) => destinationMatch[1].includes(city))
     : undefined;
-  const destinationCity = matchedDestination ?? cities.find((city) => city !== profile.origin);
+  const destinationCity = matchedDestination ?? cities.find((city) => city !== profile.origin && !new RegExp(`${city}(?:出发|出行|启程)`).test(text));
   if (destinationCity) profile.destination = destinationCity;
 
   profile.travelTime = extractTime(text) ?? profile.travelTime;

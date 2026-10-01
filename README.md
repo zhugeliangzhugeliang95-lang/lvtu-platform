@@ -23,7 +23,7 @@ cp .env.example .env
 - `USER_SESSION_SECRET`、`ADMIN_SECRET`、`GUEST_INQUIRY_SECRET`：生产必填且必须互不相同的随机密钥
 - `APP_ORIGIN`：生产站点的完整 Origin，例如部署域名对应的 `https://...`
 - `SUPPLIER_BOT_TOKEN`：供应商 Worker 必填；缺失时所有 Worker 接口失败关闭
-- `AI_PROVIDER=auto`：优先使用已配置的视觉/对话模型，未配置时自动回退本地顾问；如使用豆包对话，填写 `VOLCENGINE_API_KEY` 与 `VOLCENGINE_CHAT_MODEL`
+- `AI_PROVIDER=auto`：优先使用已配置的开源对话模型，其次才使用已配置的兼容模型，未配置时自动回退本地顾问；推荐填写 `OPEN_MODEL_API_KEY`（SiliconFlow/OpenAI 兼容接口）、`OPEN_MODEL_BASE_URL` 和 `OPEN_MODEL_NAME`。如使用豆包对话，填写 `VOLCENGINE_API_KEY` 与 `VOLCENGINE_CHAT_MODEL`
 - `VOLCENGINE_VISION_MODEL`：填写支持图片理解的方舟模型后，付款截图会自动识别金额、时间和收款方；未配置时保持人工审核
 - `ADMIN_USER` / `ADMIN_PASS`：可选的后台兼容账号，生产优先使用数据库管理员
 

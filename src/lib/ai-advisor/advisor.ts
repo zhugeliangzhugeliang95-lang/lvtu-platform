@@ -62,6 +62,9 @@ function dailyPlan(destination: string, duration?: string) {
 }
 
 function localReply(profile: TravelProfile, missing: string[], highValue: boolean, sources: Awaited<ReturnType<typeof retrieveKnowledge>>, latest: string) {
+  if (/^(你好|您好|嗨|哈喽|hello|hi)[!！。\s]*$/i.test(latest.trim())) {
+    return "你好，我是旅途的旅行顾问。你可以直接告诉我想去哪里、从哪里出发，或者说‘还没想好，帮我推荐’。我会先给你方向，再按需要补充时间和人数。";
+  }
   const matchedTour = sources.find((source) => source.id.startsWith("tour:"));
   if (matchedTour && /旅行团|跟团|小团|团期|班期|产品|价格|多少钱|有.*团/.test(latest)) {
     return `有，当前产品库里匹配到「${matchedTour.title}」。\n\n${matchedTour.excerpt}\n\n你可以点开下方知识来源查看完整行程；如果准备咨询报名，再告诉我出发地、计划日期和人数，我会把需求整理给顾问确认最终名额与价格。`;
@@ -80,7 +83,12 @@ function localReply(profile: TravelProfile, missing: string[], highValue: boolea
     return `可以，先给你一个不带销售倾向的方向：${direction}。\n\n为了避免推荐和实际出行不匹配，告诉我${profile.origin ? "目的地偏好" : "出发地"}和${profile.duration || "大概玩几天"}就好，我会继续给出路线节奏和住宿区域建议。`;
   }
   if (missing.length) {
-    const known = [profile.destination, profile.travelTime, profile.travelers ? `${profile.travelers}人` : undefined].filter(Boolean).join("、");
+    const known = [
+      profile.origin ? `从${profile.origin}出发` : undefined,
+      profile.destination ? `去${profile.destination}` : undefined,
+      profile.travelTime,
+      profile.travelers ? `${profile.travelers}人` : undefined,
+    ].filter(Boolean).join("、");
     const next = missing.slice(0, 2).map((field) => FIELD_LABELS[field]).join("和");
     return `${known ? `好的，我先记下：${known}。` : "好，我来帮你一起梳理。"}接下来告诉我${next}就可以，我会按你的节奏继续规划，不用一次填完所有信息。`;
   }

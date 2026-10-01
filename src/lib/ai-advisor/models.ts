@@ -83,23 +83,42 @@ async function generateWithOllama(params: {
   };
 }
 
-function clientFor(task: AdvisorTask) {
-  if (task === "COMPLEX_PLAN" && process.env.DEEPSEEK_API_KEY && process.env.DEEPSEEK_BASE_URL) {
+function clientFor(task: AdvisorTask, providerMode: string) {
+  const normalizedMode = providerMode.toLowerCase();
+  const openModelKey = process.env.OPEN_MODEL_API_KEY || process.env.SILICONFLOW_API_KEY;
+  const openModelBaseUrl = (process.env.OPEN_MODEL_BASE_URL || process.env.SILICONFLOW_BASE_URL || "https://api.siliconflow.cn/v1").replace(/\/$/, "");
+  const openModelName = process.env.OPEN_MODEL_NAME || process.env.SILICONFLOW_MODEL || "Qwen/Qwen3-8B";
+  const wantsOpenModel = normalizedMode === "open-model" || normalizedMode === "siliconflow";
+
+  // SiliconFlow exposes an OpenAI-compatible API for open-weight models. In
+  // auto mode it is preferred when configured, so the app does not silently
+  // fall back to an unconfigured commercial provider.
+  if ((wantsOpenModel || normalizedMode === "auto") && openModelKey) {
+    return {
+      client: new OpenAI({ apiKey: openModelKey, baseURL: openModelBaseUrl }),
+      model: openModelName,
+      provider: "open-model",
+    };
+  }
+  if (wantsOpenModel) return null;
+
+  if ((normalizedMode === "auto" || normalizedMode === "deepseek") && task === "COMPLEX_PLAN" && process.env.DEEPSEEK_API_KEY && process.env.DEEPSEEK_BASE_URL) {
     return {
       client: new OpenAI({ apiKey: process.env.DEEPSEEK_API_KEY, baseURL: process.env.DEEPSEEK_BASE_URL }),
       model: process.env.DEEPSEEK_PLANNER_MODEL || "DeepSeek-R1-Distill-Qwen-32B",
       provider: "deepseek-compatible",
     };
   }
-  if (process.env.VOLCENGINE_API_KEY && (process.env.AI_PROVIDER || "auto").toLowerCase() !== "cloud") {
+  if ((normalizedMode === "auto" || normalizedMode === "volcengine") && process.env.VOLCENGINE_API_KEY && (process.env.VOLCENGINE_CHAT_MODEL || process.env.VOLCENGINE_MODEL)) {
     return {
       client: new OpenAI({ apiKey: process.env.VOLCENGINE_API_KEY, baseURL: "https://ark.cn-beijing.volces.com/api/v3" }),
-      model: process.env.VOLCENGINE_CHAT_MODEL || process.env.VOLCENGINE_MODEL || "doubao-seed-1-6-lite-251015",
+      model: process.env.VOLCENGINE_CHAT_MODEL || process.env.VOLCENGINE_MODEL!,
       provider: "volcengine",
     };
   }
+  if (normalizedMode === "volcengine") return null;
   const apiKey = process.env.QWEN_API_KEY || process.env.DASHSCOPE_API_KEY;
-  if (!apiKey) return null;
+  if (!apiKey || !["auto", "qwen", "dashscope"].includes(normalizedMode)) return null;
   return {
     client: new OpenAI({ apiKey, baseURL: process.env.QWEN_BASE_URL || "https://dashscope.aliyuncs.com/compatible-mode/v1" }),
     model: process.env.QWEN_CHAT_MODEL || "qwen3-14b",
@@ -131,9 +150,9 @@ export async function generateModelReply(params: {
     }
   }
 
-  if (providerMode !== "cloud" && providerMode !== "auto" && providerMode !== "volcengine") return null;
+  if (providerMode === "cloud" || !["auto", "volcengine", "qwen", "dashscope", "open-model", "siliconflow", "deepseek"].includes(providerMode)) return null;
 
-  const selected = clientFor(params.task);
+  const selected = clientFor(params.task, providerMode);
   if (!selected) return null;
   const started = Date.now();
   const context = params.sources.map((source, index) => `[资料${index + 1}｜${source.title}] ${source.excerpt}`).join("\n");
