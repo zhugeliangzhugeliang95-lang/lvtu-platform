@@ -17,7 +17,7 @@ type InquiryResponse = {
 };
 
 const STATUS_COPY: Record<string, { title: string; detail: string; step: number }> = {
-  PENDING: { title: "已进入供应商队列", detail: "旅途会把你的重点需求交给供应商机器人处理。", step: 1 },
+  PENDING: { title: "供应商报价中", detail: "旅途已把你的重点需求交给供应商机器人，正在等待开始收集报价。", step: 1 },
   SEARCHING: { title: "正在寻找匹配供应商", detail: "正在按目的地、日期、人数和服务规格筛选。", step: 1 },
   MESSAGING: { title: "正在向供应商询价", detail: "机器人正在发送需求，不需要你反复等待或重复填写。", step: 2 },
   WAITING_REPLIES: { title: "供应商报价中", detail: "已发出询价，正在等待商家回复。价格仍是待确认状态。", step: 2 },

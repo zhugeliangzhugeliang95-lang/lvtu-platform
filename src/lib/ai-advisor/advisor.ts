@@ -89,8 +89,17 @@ function localReply(profile: TravelProfile, missing: string[], highValue: boolea
       profile.travelTime,
       profile.travelers ? `${profile.travelers}人` : undefined,
     ].filter(Boolean).join("、");
-    const next = missing.slice(0, 2).map((field) => FIELD_LABELS[field]).join("和");
-    return `${known ? `好的，我先记下：${known}。` : "好，我来帮你一起梳理。"}接下来告诉我${next}就可以，我会按你的节奏继续规划，不用一次填完所有信息。`;
+    const nextField = missing[0];
+    const questions: Record<string, string> = {
+      origin: "从哪里出发",
+      destination: "想去哪里",
+      travelTime: "准备什么时候出发",
+      travelers: "一共几个人",
+      budget: "大概预算多少",
+    };
+    const next = questions[nextField] || FIELD_LABELS[nextField] || "最在意什么";
+    const later = missing.length > 1 ? "，其他信息后面再补充" : "";
+    return `${known ? `好的，我先记下：${known}。` : "好，我来帮你一起梳理。"}先告诉我${next}就可以${later}。`;
   }
   const knowledge = sources.find((source) => ["DESTINATION", "HOTEL", "ITINERARY"].includes(source.category))?.excerpt;
   const destination = profile.destination || "这次旅行";

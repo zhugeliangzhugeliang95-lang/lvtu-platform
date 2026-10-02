@@ -24,6 +24,10 @@ type ModelResult = {
   usage?: { inputTokens?: number; outputTokens?: number };
 };
 
+// 当外部模型明确返回配额耗尽时，短时间内直接走本地顾问，避免每轮
+// 都等待一次必定失败的网络请求。配置新的开源模型后会自动恢复尝试。
+let modelUnavailableUntil = 0;
+
 type OllamaResponse = {
   message?: { content?: string; thinking?: string };
   response?: string;
@@ -148,6 +152,7 @@ export async function generateModelReply(params: {
     || (/^[\u4e00-\u9fa5]{2,10}(?:出发|出行|启程|走)[!！。\s]*$/.test(latest) && !/(?:去|到|目的地|想去)/.test(latest))) {
     return null;
   }
+  if (Date.now() < modelUnavailableUntil) return null;
   const canUseLocalPlanner = params.task === "COMPLEX_PLAN" && Boolean(params.profile.destination) && params.missingFields.length <= 1;
   const useOllama = providerMode === "ollama" || process.env.AI_USE_OLLAMA === "true";
   if (providerMode !== "cloud" && (useOllama || providerMode === "auto") && canUseLocalPlanner) {
@@ -166,16 +171,23 @@ export async function generateModelReply(params: {
   const started = Date.now();
   const context = params.sources.map((source, index) => `[资料${index + 1}｜${source.title}] ${source.excerpt}`).join("\n");
   const state = `当前客户画像：${JSON.stringify(params.profile)}\n尚缺信息：${params.missingFields.join("、") || "无"}\n高价值信号：${params.highValue ? "是" : "否"}`;
-  const response = await selected.client.chat.completions.create({
-    model: selected.model,
-    messages: [
-      { role: "system", content: SYSTEM_PROMPT },
-      { role: "system", content: `${state}\n\n旅途知识库：\n${context || "暂无匹配资料，请谨慎回答并说明需核实。"}` },
-      ...params.messages.slice(-12).map((message) => ({ role: message.role, content: message.content })),
-    ],
-    temperature: params.task === "COMPLEX_PLAN" ? 0.45 : 0.65,
-    max_tokens: params.task === "COMPLEX_PLAN" ? 1400 : 700,
-  });
+  let response;
+  try {
+    response = await selected.client.chat.completions.create({
+      model: selected.model,
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "system", content: `${state}\n\n旅途知识库：\n${context || "暂无匹配资料，请谨慎回答并说明需核实。"}` },
+        ...params.messages.slice(-12).map((message) => ({ role: message.role, content: message.content })),
+      ],
+      temperature: params.task === "COMPLEX_PLAN" ? 0.45 : 0.65,
+      max_tokens: params.task === "COMPLEX_PLAN" ? 1400 : 700,
+    });
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    if (/quota|free.?tier|allocationquota|\b403\b|\b429\b/i.test(reason)) modelUnavailableUntil = Date.now() + 5 * 60_000;
+    throw error;
+  }
   return {
     text: response.choices[0]?.message?.content?.trim() || "我已经记下你的想法了。可以再告诉我最在意的是行程节奏、酒店，还是当地体验吗？",
     model: selected.model,
