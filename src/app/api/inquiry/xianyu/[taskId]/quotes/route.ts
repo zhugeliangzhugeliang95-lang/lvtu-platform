@@ -10,6 +10,10 @@ import { z } from "zod";
 
 const VOLCENGINE_API_KEY = process.env.VOLCENGINE_API_KEY ?? "";
 const DASHSCOPE_API_KEY = process.env.DASHSCOPE_API_KEY ?? "";
+const VOLCENGINE_MODEL = process.env.VOLCENGINE_CHAT_MODEL || process.env.VOLCENGINE_MODEL || "";
+const OPEN_MODEL_API_KEY = process.env.OPEN_MODEL_API_KEY || process.env.SILICONFLOW_API_KEY || "";
+const OPEN_MODEL_BASE_URL = (process.env.OPEN_MODEL_BASE_URL || process.env.SILICONFLOW_BASE_URL || "https://api.siliconflow.cn/v1").replace(/\/$/, "");
+const OPEN_MODEL_NAME = process.env.OPEN_MODEL_NAME || process.env.SILICONFLOW_MODEL || "Qwen/Qwen3-8B";
 
 type ParsedQuote = {
   pricePerNight: number;
@@ -180,8 +184,20 @@ async function parseQuoteWithAI(
 
 如果回复中没有明确报价，返回 null。`;
 
-  // 优先用豆包
-  if (VOLCENGINE_API_KEY) {
+  const parseResponse = (data: { choices?: Array<{ message?: { content?: string } }> }) => {
+    const text = data.choices?.[0]?.message?.content ?? "";
+    const match = text.match(/\{[\s\S]*\}/);
+    if (!match) return null;
+    try {
+      const parsed = JSON.parse(match[0]);
+      return parsed && typeof parsed.pricePerNight === "number" ? parsed as ParsedQuote : null;
+    } catch {
+      return null;
+    }
+  };
+
+  // 配置了方舟模型时优先用豆包；模型 ID 不再写死，避免环境中的模型已下线时静默失败。
+  if (VOLCENGINE_API_KEY && VOLCENGINE_MODEL) {
     try {
       const res = await fetch(
         "https://ark.cn-beijing.volces.com/api/v3/chat/completions",
@@ -192,7 +208,7 @@ async function parseQuoteWithAI(
             Authorization: `Bearer ${VOLCENGINE_API_KEY}`,
           },
           body: JSON.stringify({
-            model: "doubao-1-5-pro-32k-250115",
+            model: VOLCENGINE_MODEL,
             messages: [{ role: "user", content: prompt }],
             temperature: 0.1,
           }),
@@ -200,18 +216,29 @@ async function parseQuoteWithAI(
         }
       );
       const data = await res.json();
-      const text = data.choices?.[0]?.message?.content ?? "";
-      const match = text.match(/\{[\s\S]*\}/);
-      if (match) {
-        const parsed = JSON.parse(match[0]);
-        if (parsed && typeof parsed.pricePerNight === "number") return parsed;
-      }
+      const parsed = parseResponse(data);
+      if (parsed) return parsed;
     } catch {
       // 继续尝试千问
     }
   }
 
-  // 备用千问
+  // 没有豆包时使用已配置的开源模型，再备用千问。
+  if (OPEN_MODEL_API_KEY) {
+    try {
+      const res = await fetch(`${OPEN_MODEL_BASE_URL}/chat/completions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${OPEN_MODEL_API_KEY}` },
+        body: JSON.stringify({ model: OPEN_MODEL_NAME, messages: [{ role: "user", content: prompt }], temperature: 0.1 }),
+        signal: AbortSignal.timeout(15000),
+      });
+      const parsed = parseResponse(await res.json());
+      if (parsed) return parsed;
+    } catch {
+      // 继续尝试千问
+    }
+  }
+
   if (DASHSCOPE_API_KEY) {
     try {
       const res = await fetch(
@@ -231,12 +258,8 @@ async function parseQuoteWithAI(
         }
       );
       const data = await res.json();
-      const text = data.choices?.[0]?.message?.content ?? "";
-      const match = text.match(/\{[\s\S]*\}/);
-      if (match) {
-        const parsed = JSON.parse(match[0]);
-        if (parsed && typeof parsed.pricePerNight === "number") return parsed;
-      }
+      const parsed = parseResponse(data);
+      if (parsed) return parsed;
     } catch {
       // 解析失败
     }

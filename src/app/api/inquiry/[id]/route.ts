@@ -22,6 +22,18 @@ export async function GET(req: NextRequest, { params }: Params) {
       include: {
         priceReferences: { orderBy: { pricePerNight: "asc" } },
         statusLogs: { orderBy: { createdAt: "asc" }, take: 20 },
+        xianYuTasks: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+          select: {
+            id: true,
+            status: true,
+            sentCount: true,
+            aiSummary: true,
+            updatedAt: true,
+            _count: { select: { quotes: true, messages: true } },
+          },
+        },
       },
     });
     if (!order) return NextResponse.json(inquiryNotFound, { status: 404 });

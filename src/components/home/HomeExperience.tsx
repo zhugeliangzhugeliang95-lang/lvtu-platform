@@ -4,7 +4,6 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowRight,
-  BadgeCheck,
   BedDouble,
   CalendarDays,
   CarFront,
@@ -42,9 +41,6 @@ const images = {
   singapore: "/travel-home/singapore.jpg",
   aurora: "/travel-home/aurora.jpg",
   hotel: "/travel-home/hotel-suite.jpg",
-  consultantLin: "/travel-home/consultant-lin.jpg",
-  consultantChen: "/travel-home/consultant-chen.jpg",
-  consultantZhou: "/travel-home/consultant-zhou.jpg",
 };
 
 const tap = { scale: 0.975 };
@@ -107,7 +103,7 @@ const coreServices = [
   { title: "酒店套餐", note: "住+餐+玩看预估", href: "/inquiry?service=combo", icon: Luggage, tone: "from-[#64e6bd] to-[#11b981]", shadow: "rgba(17,185,129,.22)" },
   { title: "旅行团", note: "跟团 · 私家团", href: "/tours", icon: UsersRound, tone: "from-[#8a73ff] to-[#5d3ee6]", shadow: "rgba(93,62,230,.22)" },
   { title: "AI 规划", note: "智能行程", href: "/ai", icon: Sparkles, tone: "from-[#9c7bff] to-[#5b3fe6]", shadow: "rgba(91,63,230,.24)" },
-  { title: "定制顾问", note: "专属服务", href: "/contact", icon: BadgeCheck, tone: "from-[#3db1ff] to-[#066de5]", shadow: "rgba(6,109,229,.22)" },
+  { title: "客服咨询", note: "需要时直接问", href: "/contact", icon: Headphones, tone: "from-[#3db1ff] to-[#066de5]", shadow: "rgba(6,109,229,.22)" },
 ];
 
 function HeroScene() {
@@ -253,20 +249,6 @@ function OtherServices() {
   );
 }
 
-const consultants = [
-  { name: "小旅", focus: "亲子游 · 海岛度假 · 自由行", image: images.consultantLin },
-  { name: "阿杰", focus: "日本旅行 · 城市漫游 · 温泉", image: images.consultantChen },
-  { name: "周周", focus: "蜜月旅行 · 欧洲路线 · 定制游", image: images.consultantZhou },
-];
-
-function ConsultantScene() {
-  return (
-    <SceneReveal><section className="home-block px-5" aria-labelledby="consultant-title"><SectionTitle title="专属旅行顾问" subtitle="专业服务 · 省心省钱 · 旅程无忧" href="/contact" action="了解顾问服务" /><div className="overflow-hidden rounded-[20px] border border-[#d9e9ff] bg-white px-4 shadow-[var(--home-card-shadow)]">
-      {consultants.map((consultant, index) => <div key={consultant.name} className={`flex min-h-[92px] items-center gap-3 ${index < consultants.length - 1 ? "border-b border-[#e4edf8]" : ""}`}><TravelImage src={consultant.image} alt={`${consultant.name}旅行顾问`} className="size-14 shrink-0 rounded-full ring-2 ring-[#dbeaff]" imageClassName="object-top" sizes="56px" /><div className="min-w-0 flex-1"><div className="flex items-center gap-1.5"><h3 className="text-[15px] font-semibold text-[var(--home-navy)]">{consultant.name}</h3><span className="inline-flex items-center gap-1 rounded-full bg-[#eaf4ff] px-2 py-1 text-[9px] font-semibold text-[#0878f9]"><BadgeCheck size={11} />资深顾问</span></div><p className="mt-1.5 truncate text-[10px] text-[var(--home-blue-muted)]">擅长：{consultant.focus}</p></div><Link href="/contact" className="inline-flex min-h-11 shrink-0 items-center rounded-full bg-[#0878f9] px-4 text-[11px] font-semibold text-white shadow-[0_7px_18px_rgba(8,120,249,.22)] active:scale-[.975]">咨询顾问</Link></div>)}
-    </div></section></SceneReveal>
-  );
-}
-
 const guarantees = [
   { title: "官方核验", note: "资质齐全", icon: ShieldCheck },
   { title: "价格说明", note: "透明公开", icon: Tags },
@@ -277,7 +259,7 @@ const guarantees = [
 const faqs = [
   { question: "价格是怎么确认的？", answer: "多渠道比价 + 合作资源 + 人工确认，确保价格合理透明", icon: CircleDollarSign },
   { question: "可以退改吗？", answer: "根据产品类型不同，退改政策会有所差异", icon: CalendarDays },
-  { question: "怎么联系顾问？", answer: "可以通过在线客服、电话或定制顾问服务联系", icon: UsersRound },
+  { question: "怎么联系客服？", answer: "AI 整理好重点后，可一键复制并打开企业微信客服", icon: UsersRound },
   { question: "订单异常怎么办？", answer: "订单问题请及时联系客服，我们会第一时间处理", icon: Luggage },
 ];
 
@@ -302,5 +284,5 @@ export function HomeExperience({ home }: { home: HomeTravelData }) {
     window.addEventListener("scroll", update, { passive: true });
     return () => window.removeEventListener("scroll", update);
   }, []);
-  return <div className="home-experience"><HomeHeader solid={solidHeader} /><HeroScene /><SavingScene /><FeaturedPlans home={home} /><PopularDestinations /><Inspiration home={home} /><OtherServices /><ConsultantScene /><TrustAndFaq /></div>;
+  return <div className="home-experience"><HomeHeader solid={solidHeader} /><HeroScene /><SavingScene /><FeaturedPlans home={home} /><PopularDestinations /><Inspiration home={home} /><OtherServices /><TrustAndFaq /></div>;
 }

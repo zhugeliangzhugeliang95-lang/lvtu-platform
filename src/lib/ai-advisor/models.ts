@@ -8,6 +8,8 @@ const SYSTEM_PROMPT = `你是“旅途AI旅行顾问”，不是通用聊天机�
 1. 优先依据提供的旅途知识库，不确定的事实要明确说需要核实。
 2. 不自动询价，不联系供应商，不付款，不采购，不锁房，不声称掌握实时价格或库存。
 3. 不连续抛出表单式问题。每轮最多自然追问1—2个最关键缺失信息。
+   先检查当前客户画像和历史消息，已经说过的信息绝不重复询问；“上海出发”应记为出发地上海，而不是目的地。
+   用户只说“你好”时先自然打招呼并给出可直接输入的例子，不要立刻抛出一串字段。
 4. 普通回答简洁、温暖、专业；复杂规划给出有节奏的分日方案和大致预算分配思路，但不虚构实时价格。
 5. 用户有预订、价格、优惠、多人、定制、团队或商务接待意图时，先提供有价值的建议，再自然说明可转人工顾问继续。
 6. 不使用“保证最低价”“一定有房”等承诺。
@@ -139,6 +141,13 @@ export async function generateModelReply(params: {
   // Use AI_PROVIDER=auto only when a paid compatible API is an intentional
   // fallback; AI_PROVIDER=cloud skips Ollama.
   const providerMode = (process.env.AI_PROVIDER || "auto").toLowerCase();
+  const latest = [...params.messages].reverse().find((message) => message.role === "user")?.content.trim() || "";
+  // 短句中的出发地和问候由本地规则直接处理，保证关键字段不会被
+  // 任意模型误判，也避免模型把一次简单问候变成表单追问。
+  if (/^(你好|您好|嗨|哈喽|hello|hi)[!！。\s]*$/i.test(latest)
+    || (/^[\u4e00-\u9fa5]{2,10}(?:出发|出行|启程|走)[!！。\s]*$/.test(latest) && !/(?:去|到|目的地|想去)/.test(latest))) {
+    return null;
+  }
   const canUseLocalPlanner = params.task === "COMPLEX_PLAN" && Boolean(params.profile.destination) && params.missingFields.length <= 1;
   const useOllama = providerMode === "ollama" || process.env.AI_USE_OLLAMA === "true";
   if (providerMode !== "cloud" && (useOllama || providerMode === "auto") && canUseLocalPlanner) {

@@ -13,7 +13,7 @@ const ADVANTAGES = [
   },
   {
     icon: Users,
-    title: "专属顾问服务",
+    title: "人工核价服务",
     desc: "1 对 1 顾问陪伴，从需求确认到出行结束，全程跟进不撒手",
     color: "text-indigo-500",
     bg: "bg-indigo-50",

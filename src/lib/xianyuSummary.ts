@@ -3,6 +3,10 @@ import { prisma } from "@/lib/prisma";
 
 const VOLCENGINE_API_KEY = process.env.VOLCENGINE_API_KEY ?? "";
 const DASHSCOPE_API_KEY = process.env.DASHSCOPE_API_KEY ?? "";
+const VOLCENGINE_MODEL = process.env.VOLCENGINE_CHAT_MODEL || process.env.VOLCENGINE_MODEL || "";
+const OPEN_MODEL_API_KEY = process.env.OPEN_MODEL_API_KEY || process.env.SILICONFLOW_API_KEY || "";
+const OPEN_MODEL_BASE_URL = (process.env.OPEN_MODEL_BASE_URL || process.env.SILICONFLOW_BASE_URL || "https://api.siliconflow.cn/v1").replace(/\/$/, "");
+const OPEN_MODEL_NAME = process.env.OPEN_MODEL_NAME || process.env.SILICONFLOW_MODEL || "Qwen/Qwen3-8B";
 
 export interface XianYuQuoteSummary {
   priceRange: { min: number; max: number };
@@ -158,11 +162,17 @@ export async function generateXianYuQuoteSummary(
   };
 
   try {
-    if (VOLCENGINE_API_KEY) {
+    if (VOLCENGINE_API_KEY && VOLCENGINE_MODEL) {
       summary.recommendation = await tryAI(
         "https://ark.cn-beijing.volces.com/api/v3/chat/completions",
         VOLCENGINE_API_KEY,
-        "doubao-1-5-pro-32k-250115"
+        VOLCENGINE_MODEL
+      );
+    } else if (OPEN_MODEL_API_KEY) {
+      summary.recommendation = await tryAI(
+        `${OPEN_MODEL_BASE_URL}/chat/completions`,
+        OPEN_MODEL_API_KEY,
+        OPEN_MODEL_NAME,
       );
     } else if (DASHSCOPE_API_KEY) {
       summary.recommendation = await tryAI(

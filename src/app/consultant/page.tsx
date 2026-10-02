@@ -1,4 +1,6 @@
-import Link from "next/link";
-import { Headphones, MessageCircle } from "lucide-react";
-import { PlatformFrame } from "@/components/platform/Catalog";
-export default function ConsultantPage(){return <PlatformFrame title="专属旅行顾问" subtitle="有人接住你的旅行需求" back="/"><section className="px-5 py-6"><div className="rounded-[24px] bg-[#0d315d] p-6 text-white"><div className="grid size-14 place-items-center rounded-[18px] bg-white/12"><Headphones size={27}/></div><h1 className="mt-4 text-[24px] font-semibold">从纠结到出发，都有人帮你</h1><p className="mt-2 text-[12px] leading-5 text-white/70">先提交日期、人数和偏好，顾问会核实实际可订方案，并向你说明价格、库存和退改规则。</p></div><div className="mt-6 space-y-3">{[["小旅","亲子游 · 海岛度假 · 自由行"],["阿杰","日本旅行 · 城市漫游 · 温泉"],["周周","蜜月旅行 · 欧洲路线 · 定制游"]].map(([name,focus])=><div key={name} className="app-card flex items-center gap-3 p-4"><div className="grid size-12 place-items-center rounded-full bg-[var(--app-blue-soft)] text-[var(--app-blue)]"><MessageCircle size={20}/></div><div className="flex-1"><p className="text-[14px] font-semibold">{name}</p><p className="mt-1 text-[11px] text-[var(--app-muted)]">擅长：{focus}</p></div><Link href="/inquiry?service=combo&subject=顾问协助" className="rounded-full bg-[var(--app-blue)] px-3 py-2 text-[10px] font-semibold text-white">提交需求</Link></div>)}</div></section></PlatformFrame>}
+import { redirect } from "next/navigation";
+
+/** 旧链接保留可访问性，但不再展示虚构的顾问人物页面。 */
+export default function ConsultantPage() {
+  redirect("/ai");
+}

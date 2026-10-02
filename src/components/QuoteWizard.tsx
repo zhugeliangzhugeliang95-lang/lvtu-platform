@@ -990,15 +990,24 @@ export function QuoteWizard() {
       state.details.loungeLocation ||
       state.details.pickup ||
       "待确认";
+    const detailLabels: Record<string, string> = {
+      roomType: "房型",
+      breakfast: "早餐",
+      tripType: "行程",
+      cabin: "舱位",
+      ticketPeople: "票种人数",
+      projectName: "项目",
+      pickup: "接送路线",
+      dropoff: "送达地点",
+      loungeLocation: "机场/贵宾厅",
+      vehicleType: "车型",
+    };
     const detailLines = Object.entries(state.details)
-      .filter(([, value]) => value.trim())
-      .map(([key, value]) => `${key}：${value}`);
-    const quoteLines = platformQuotes
-      .slice(0, 5)
-      .map(
-        (quote) =>
-          `${quote.platformLabel || quote.platform} ${quote.roomType || "参考方案"} ¥${Math.round(quote.totalPrice).toLocaleString("zh-CN")}`,
-      );
+      .filter(([key, value]) => value.trim() && detailLabels[key])
+      .slice(0, 4)
+      .map(([key, value]) => `${detailLabels[key]}：${value}`);
+    const quotePrices = platformQuotes.map((quote) => Math.round(quote.totalPrice)).filter((price) => price > 0);
+    const lowestQuote = quotePrices.length ? Math.min(...quotePrices) : 0;
     const text = [
       "【旅途需求咨询】",
       `服务：${selectedLabels}`,
@@ -1014,13 +1023,12 @@ export function QuoteWizard() {
         : "",
       state.preference ? `偏好：${state.preference}` : "",
       state.notes ? `备注：${state.notes}` : "",
-      detailLines.length ? `详细信息：\n${detailLines.join("\n")}` : "",
-      quoteLines.length ? `平台参考价：\n${quoteLines.join("\n")}` : "",
+      detailLines.length ? `补充：${detailLines.join("；")}` : "",
+      lowestQuote ? `公开平台参考最低：¥${lowestQuote.toLocaleString("zh-CN")}（仅作参考）` : "",
       estimate?.estimatedMinPrice && estimate?.estimatedMaxPrice
         ? `旅途预估：¥${estimate.estimatedMinPrice.toLocaleString("zh-CN")}～¥${estimate.estimatedMaxPrice.toLocaleString("zh-CN")}（公开原价的70%～80%，当前为预估价）`
         : "",
-      "服务费：普通用户按最终实际节省金额的35%收取；有效会员使用绑定手机号预订免平台服务费。",
-      "请客服帮忙确认最终价格、库存、服务内容和退改规则。",
+      "请确认最终价格、库存、服务内容和退改规则。",
     ]
       .filter(Boolean)
       .join("\n");

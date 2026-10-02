@@ -20,7 +20,7 @@ export function HomeHero({ quickScenes }: { quickScenes: HomeLinkItem[] }) {
           <div className="absolute inset-0 bg-[linear-gradient(100deg,rgba(16,33,58,.58)_0%,rgba(18,52,91,.22)_52%,rgba(18,52,91,.05)_100%)]" />
           <div className="absolute inset-x-0 bottom-0 h-36 bg-gradient-to-t from-[#10213a]/30 to-transparent" />
           <div className="home-hero-copy relative px-6 pt-8 text-white">
-            <p className="text-[13px] font-medium text-white/82">AI旅行管家 · 优质资源 · 专属服务</p>
+            <p className="text-[13px] font-medium text-white/82">AI旅行管家 · 优质资源 · 客服支持</p>
             <h1 id="home-hero-title" className="mt-4 max-w-[230px] text-[32px] font-semibold leading-[1.24]">
               住得更好，<br />花得更少，<br />旅行更省心
             </h1>

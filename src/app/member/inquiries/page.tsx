@@ -13,7 +13,7 @@ const STATUS_LABEL: Record<string, string> = {
   WAITING_CONTACT_INFO: "待留联系方式",
   WAITING_PAYMENT: "待付款",
   PAID: "已支付",
-  WAITING_PROCUREMENT: "人工处理中",
+  WAITING_PROCUREMENT: "供应商询价中",
   COMPLETED: "已完成",
   CANCELLED: "已取消",
   ABNORMAL: "需人工处理",

@@ -90,7 +90,7 @@ export function AdvisorHandoffSheet({
               <span className="text-[10px] font-bold tracking-[.1em]">人工顾问接力</span>
             </div>
             <h2 id="advisor-handoff-title" className="mt-3 text-[20px] font-semibold tracking-[-.03em] text-[#163d66]">留下联系方式，顾问继续帮你</h2>
-            <p className="mt-1.5 text-[11px] leading-5 text-[#71859a]">AI 已整理好的目的地、人数和预算会一并发送，无需重复描述。</p>
+          <p className="mt-1.5 text-[11px] leading-5 text-[#71859a]">只发送出发地、目的地、时间、人数、预算和重点偏好，不用重复描述。</p>
           </div>
           <button type="button" onClick={onClose} className="grid size-10 shrink-0 place-items-center rounded-full bg-white text-[#6f8092] shadow-sm" aria-label="关闭">
             <X size={17} />

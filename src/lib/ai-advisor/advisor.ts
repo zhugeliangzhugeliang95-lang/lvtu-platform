@@ -196,17 +196,12 @@ export async function advise(params: { messages: AdvisorMessage[]; currentProfil
 
 export function createHandoffSummary(profile: TravelProfile, notes?: string) {
   return [
-    `客户姓名：${profile.customerName || "待补充"}`,
-    `联系方式：${profile.contact || "待补充"}`,
-    `出发城市：${profile.origin || "待补充"}`,
-    `目的地：${profile.destination || "待确认"}`,
-    `时间：${profile.travelTime || "待补充"}`,
-    `时长：${profile.duration || "待补充"}`,
-    `人数：${profile.travelers ? `${profile.travelers}人` : "待补充"}`,
-    `预算：${profile.budget || "待补充"}`,
-    `旅行类型：${profile.travelType || "待判断"}`,
-    `需求：${[...profile.preferences, profile.hotelLevel ? `${profile.hotelLevel}酒店` : ""].filter(Boolean).join("、") || "待进一步沟通"}`,
-    `AI总结：${notes || "客户已通过AI完成初步需求梳理，建议人工顾问继续确认关键细节。"}`,
-    `推荐方案：按目的地与出行节奏进一步核实后提供。`,
-  ].join("\n");
+    "【旅途咨询重点】",
+    `行程：${profile.origin ? `从${profile.origin}出发，` : ""}${profile.destination || "目的地待确认"}`,
+    `时间：${profile.travelTime || "待补充"}${profile.duration ? ` · ${profile.duration}` : ""}`,
+    `人数：${profile.travelers ? `${profile.travelers}人` : "待补充"} · 预算：${profile.budget || "待补充"}`,
+    `偏好：${[...profile.preferences, profile.hotelLevel ? `${profile.hotelLevel}酒店` : ""].filter(Boolean).join("、") || "待进一步沟通"}`,
+    notes ? `补充：${notes}` : "",
+    "请客服确认可订性、最终价格、服务内容和退改规则。",
+  ].filter(Boolean).join("\n");
 }
